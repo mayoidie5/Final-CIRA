@@ -2,6 +2,8 @@ import React, { useState } from 'react';
 import { Eye, EyeOff, AlertCircle, CheckCircle } from 'lucide-react';
 import { useAuth } from '../contexts/AuthContext';
 import { UserRole } from '../types';
+import navyLogo from '../assets/MainLogoNavyBlue.png';
+import whiteLogo from '../assets/MainLogoWhite.png';
 
 interface SignUpProps {
   onSwitchToSignIn: () => void;
@@ -69,7 +71,16 @@ export const SignUp: React.FC<SignUpProps> = ({ onSwitchToSignIn }) => {
       <div className="w-full max-w-md">
         <div className="bg-white dark:bg-gray-800 rounded-lg shadow-xl p-8">
           <div className="text-center mb-8">
-            <h1 className="text-blue-600 dark:text-blue-400 mb-2">Comlab Issue Reporting Application</h1>
+            <img
+              src={navyLogo}
+              alt="CIRA logo"
+              className="mx-auto mb-2 w-28 h-auto block dark:hidden"
+            />
+            <img
+              src={whiteLogo}
+              alt="CIRA logo"
+              className="mx-auto mb-2 w-28 h-auto hidden dark:block"
+            />
             <h2 className="text-gray-600 dark:text-gray-400">Sign Up</h2>
             <p className="text-gray-500 dark:text-gray-400 mt-2">College of Engineering Information Technology</p>
           </div>

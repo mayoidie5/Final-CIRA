@@ -1,6 +1,8 @@
 import React, { useState } from 'react';
 import { Eye, EyeOff, AlertCircle } from 'lucide-react';
 import { useAuth } from '../contexts/AuthContext';
+import navyLogo from '../assets/MainLogoNavyBlue.png';
+import whiteLogo from '../assets/MainLogoWhite.png';
 
 interface SignInProps {
   onSwitchToSignUp: () => void;
@@ -45,7 +47,16 @@ export const SignIn: React.FC<SignInProps> = ({ onSwitchToSignUp, onSignInSucces
       <div className="w-full max-w-md">
         <div className="bg-white dark:bg-gray-800 rounded-lg shadow-xl p-8">
           <div className="text-center mb-8">
-            <h1 className="text-blue-600 dark:text-blue-400 mb-2">Comlab Issue Reporting Application</h1>
+            <img
+              src={navyLogo}
+              alt="CIRA logo"
+              className="mx-auto mb-2 w-28 h-auto block dark:hidden"
+            />
+            <img
+              src={whiteLogo}
+              alt="CIRA logo"
+              className="mx-auto mb-2 w-28 h-auto hidden dark:block"
+            />
             <h2 className="text-gray-600 dark:text-gray-400">Sign In</h2>
             <p className="text-gray-500 dark:text-gray-400 mt-2">College of Engineering Information Technology</p>
           </div>
@@ -136,14 +147,7 @@ export const SignIn: React.FC<SignInProps> = ({ onSwitchToSignUp, onSignInSucces
             </p>
           </div>
 
-          <div className="mt-6 p-4 bg-gray-50 dark:bg-gray-700 rounded-lg">
-            <p className="text-gray-600 dark:text-gray-400 mb-2">Demo Accounts:</p>
-            <div className="space-y-1">
-              <p className="text-gray-700 dark:text-gray-300">Admin: Admin@plv.edu.ph / @Admin123</p>
-              <p className="text-gray-700 dark:text-gray-300">Class Rep: mj@plv.edu.ph / @Admin123</p>
-              <p className="text-gray-700 dark:text-gray-300">Student: rob@plv.edu.ph / @Admin123</p>
-            </div>
-          </div>
+          {/* Demo accounts removed */}
         </div>
       </div>
     </div>
