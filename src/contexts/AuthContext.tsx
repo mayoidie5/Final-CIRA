@@ -16,7 +16,8 @@ interface AuthContextType {
   logout: () => Promise<void>;
   signup: (userData: Partial<User> & { password: string; confirmPassword: string }) => Promise<{ success: boolean; error?: string }>;
   updateUser: (updates: Partial<User>) => Promise<void>;
-  resendVerification: (email?: string) => Promise<void>;
+  resendVerification: (email?: string) => Promise<{ success: boolean; message?: string; error?: string }>;
+  checkEmailVerification: () => Promise<boolean>;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -49,6 +50,13 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   useEffect(() => {
     const unsub = onAuthStateChanged(auth, async (fbUser) => {
       if (!fbUser) {
+        setUser(null);
+        localStorage.removeItem('currentUser');
+        return;
+      }
+
+      // Block access if email is not verified
+      if (!fbUser.emailVerified) {
         setUser(null);
         localStorage.removeItem('currentUser');
         return;
@@ -130,6 +138,9 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
       await setDoc(doc(db, 'users', cred.user.uid), newUser);
 
+      // Sign out the user immediately so they can't access the dashboard without verifying email
+      await fbSignOut(auth);
+
       return { success: true };
     } catch (err: any) {
       return { success: false, error: err.message || 'Signup failed' };
@@ -149,17 +160,37 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   };
 
   const resendVerification = async (email?: string) => {
-    const current = auth.currentUser;
-    if (current && !current.emailVerified) {
-      await sendEmailVerification(current);
-    } else if (email) {
-      // No direct way to send verification without sign-in; instruct frontend flow instead
-      console.warn('Resend verification requested for email but user is not signed in');
+    try {
+      const current = auth.currentUser;
+      if (current && !current.emailVerified) {
+        await sendEmailVerification(current);
+        return { success: true, message: 'Verification email sent! Check your inbox.' };
+      } else if (email) {
+        console.warn('Cannot resend - user not currently signed in');
+        return { success: false, error: 'Please sign in first to resend verification email' };
+      }
+      return { success: false, error: 'No user to verify' };
+    } catch (err: any) {
+      return { success: false, error: err.message || 'Failed to resend verification email' };
+    }
+  };
+
+  const checkEmailVerification = async () => {
+    try {
+      const current = auth.currentUser;
+      if (current) {
+        await current.reload();
+        return current.emailVerified;
+      }
+      return false;
+    } catch (err) {
+      console.error('Error checking email verification:', err);
+      return false;
     }
   };
 
   return (
-    <AuthContext.Provider value={{ user, login, logout, signup, updateUser, resendVerification }}>
+    <AuthContext.Provider value={{ user, login, logout, signup, updateUser, resendVerification, checkEmailVerification }}>
       {children}
     </AuthContext.Provider>
   );

@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Eye, EyeOff, AlertCircle, Moon, Sun } from 'lucide-react';
+import { Eye, EyeOff, AlertCircle, Moon, Sun, Mail, RefreshCw, CheckCircle } from 'lucide-react';
 import { useAuth } from '../contexts/AuthContext';
 import navyLogo from '../assets/MainLogoNavyBlue.png';
 import whiteLogo from '../assets/MainLogoWhite.png';
@@ -10,7 +10,7 @@ interface SignInProps {
 }
 
 export const SignIn: React.FC<SignInProps> = ({ onSwitchToSignUp, onSignInSuccess }) => {
-  const { login, resendVerification } = useAuth();
+  const { login, resendVerification, checkEmailVerification } = useAuth();
   const [formData, setFormData] = useState({ email: '', password: '' });
   const [touched, setTouched] = useState({ email: false, password: false });
   const [showPassword, setShowPassword] = useState(false);
@@ -18,6 +18,8 @@ export const SignIn: React.FC<SignInProps> = ({ onSwitchToSignUp, onSignInSucces
   const [needsVerification, setNeedsVerification] = useState(false);
   const [loading, setLoading] = useState(false);
   const [isDark, setIsDark] = useState(false);
+  const [resendLoading, setResendLoading] = useState(false);
+  const [verificationMessage, setVerificationMessage] = useState('');
 
   useEffect(() => {
     setIsDark(document.documentElement.classList.contains('dark'));
@@ -133,8 +135,17 @@ export const SignIn: React.FC<SignInProps> = ({ onSwitchToSignUp, onSignInSucces
   };
 
   const handleResendVerification = async () => {
-    await resendVerification(formData.email);
-    alert('Verification email sent!');
+    setResendLoading(true);
+    setVerificationMessage('');
+    const result = await resendVerification(formData.email);
+    setResendLoading(false);
+    
+    if (result.success) {
+      setVerificationMessage(result.message || 'Verification email sent!');
+      setTimeout(() => setVerificationMessage(''), 5000);
+    } else {
+      setError(result.error || 'Failed to resend verification email');
+    }
   };
 
   return (
@@ -229,18 +240,10 @@ export const SignIn: React.FC<SignInProps> = ({ onSwitchToSignUp, onSignInSucces
                 </div>
               )}
 
-              {needsVerification && (
-                <div className="p-3 bg-yellow-50 dark:bg-yellow-900/20 border border-yellow-200 dark:border-yellow-800 rounded-lg">
-                  <p className="text-yellow-800 dark:text-yellow-400 mb-2">
-                    Your email is not verified. Please check your inbox.
-                  </p>
-                  <button
-                    type="button"
-                    onClick={handleResendVerification}
-                    className="text-blue-600 dark:text-blue-400 hover:underline"
-                  >
-                    Resend verification email
-                  </button>
+              {verificationMessage && (
+                <div className="flex items-center gap-2 p-3 bg-green-50 dark:bg-green-900/20 border border-green-200 dark:border-green-800 rounded-lg text-green-600 dark:text-green-400">
+                  <CheckCircle size={20} />
+                  <span>{verificationMessage}</span>
                 </div>
               )}
 
@@ -274,6 +277,69 @@ export const SignIn: React.FC<SignInProps> = ({ onSwitchToSignUp, onSignInSucces
           </div>
         </div>
       </div>
+
+      {/* Email Verification Modal */}
+      {needsVerification && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
+          <div className="bg-white dark:bg-gray-800 rounded-lg shadow-2xl max-w-md w-full overflow-hidden animate-in fade-in zoom-in duration-300">
+            <div className="p-8 text-center">
+              <div className="flex justify-center mb-4">
+                <div className="bg-blue-100 dark:bg-blue-900/30 p-4 rounded-full">
+                  <Mail size={48} className="text-blue-600 dark:text-blue-400" />
+                </div>
+              </div>
+              
+              <h2 className="text-2xl font-bold text-gray-900 dark:text-white mb-2">
+                Email Verification Required
+              </h2>
+              
+              <p className="text-gray-600 dark:text-gray-400 mb-4">
+                We've sent a verification link to:
+              </p>
+              
+              <div className="bg-blue-50 dark:bg-blue-900/20 p-4 rounded-lg mb-6 border border-blue-200 dark:border-blue-800">
+                <p className="text-blue-900 dark:text-blue-300 font-semibold break-all">
+                  {formData.email}
+                </p>
+              </div>
+              
+              <div className="space-y-3 mb-6">
+                <div className="bg-amber-50 dark:bg-amber-900/20 p-3 rounded-lg border border-amber-200 dark:border-amber-800">
+                  <p className="text-sm text-amber-900 dark:text-amber-300">
+                    📧 Click the link in your <strong>Outlook</strong> email to verify your account
+                  </p>
+                </div>
+                
+                <div className="bg-gray-50 dark:bg-gray-700 p-3 rounded-lg border border-gray-200 dark:border-gray-600">
+                  <p className="text-sm text-gray-700 dark:text-gray-300">
+                    💡 Check your spam/junk folder if you don't see the email
+                  </p>
+                </div>
+              </div>
+              
+              <div className="space-y-3">
+                <button
+                  type="button"
+                  onClick={handleResendVerification}
+                  disabled={resendLoading}
+                  className="w-full inline-flex items-center justify-center gap-2 px-4 py-3 bg-blue-600 hover:bg-blue-700 text-white rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed font-medium"
+                >
+                  <RefreshCw size={18} className={resendLoading ? 'animate-spin' : ''} />
+                  {resendLoading ? 'Sending...' : 'Resend Verification Email'}
+                </button>
+                
+                <button
+                  type="button"
+                  onClick={() => setNeedsVerification(false)}
+                  className="w-full px-4 py-3 bg-gray-200 dark:bg-gray-700 hover:bg-gray-300 dark:hover:bg-gray-600 text-gray-800 dark:text-gray-200 rounded-lg transition-colors font-medium"
+                >
+                  Try Again
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 };

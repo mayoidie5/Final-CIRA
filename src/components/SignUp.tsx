@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Eye, EyeOff, AlertCircle, CheckCircle, Moon, Sun } from 'lucide-react';
+import { Eye, EyeOff, AlertCircle, CheckCircle, Moon, Sun, Mail, ArrowRight } from 'lucide-react';
 import { useAuth } from '../contexts/AuthContext';
 import { UserRole } from '../types';
 import navyLogo from '../assets/MainLogoNavyBlue.png';
@@ -49,6 +49,9 @@ export const SignUp: React.FC<SignUpProps> = ({ onSwitchToSignIn }) => {
   const [error, setError] = useState('');
   const [success, setSuccess] = useState(false);
   const [loading, setLoading] = useState(false);
+  const [showVerificationModal, setShowVerificationModal] = useState(false);
+  const [showVerificationRequiredModal, setShowVerificationRequiredModal] = useState(false);
+  const [resendLoading, setResendLoading] = useState(false);
   const [touched, setTouched] = useState<Record<string, boolean>>({});
 
   // Password validation
@@ -163,7 +166,7 @@ export const SignUp: React.FC<SignUpProps> = ({ onSwitchToSignIn }) => {
   const handleFieldBlur = (e: React.FocusEvent<HTMLInputElement | HTMLSelectElement>) => {
     const { name } = e.target;
     setTouched(prev => ({ ...prev, [name]: true }));
-  };
+  };  
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -176,10 +179,8 @@ export const SignUp: React.FC<SignUpProps> = ({ onSwitchToSignIn }) => {
 
     if (result.success) {
       setSuccess(true);
-      // Redirect to sign in after 2 seconds
-      setTimeout(() => {
-        onSwitchToSignIn();
-      }, 2000);
+      // Show the verification required modal instead of the basic success modal
+      setShowVerificationRequiredModal(true);
     } else {
       setError(result.error || 'Sign up failed');
     }
@@ -277,6 +278,12 @@ export const SignUp: React.FC<SignUpProps> = ({ onSwitchToSignIn }) => {
       const studentIdInput = e.target as HTMLInputElement;
       studentIdInput.setSelectionRange(formatted.length, formatted.length);
     }, 0);
+  };
+
+  const handleResendVerification = async () => {
+    setResendLoading(true);
+    // Just close modal - don't redirect
+    setResendLoading(false);
   };
 
   return (
@@ -555,9 +562,19 @@ export const SignUp: React.FC<SignUpProps> = ({ onSwitchToSignIn }) => {
               )}
 
               {success && (
-                <div className="flex items-center gap-2 p-3 bg-green-50 dark:bg-green-900/20 border border-green-200 dark:border-green-800 rounded-lg text-green-600 dark:text-green-400">
-                  <CheckCircle size={20} />
-                  <span>Account created! Redirecting to login...</span>
+                <div className="p-4 bg-green-50 dark:bg-green-900/20 border border-green-200 dark:border-green-800 rounded-lg">
+                  <div className="flex items-center gap-3 mb-2">
+                    <CheckCircle size={24} className="text-green-600 dark:text-green-400" />
+                    <div>
+                      <h3 className="font-semibold text-green-900 dark:text-green-300">Account Created Successfully!</h3>
+                      <p className="text-sm text-green-800 dark:text-green-400">
+                        We've sent a verification email to <strong>{formData.email}</strong>
+                      </p>
+                    </div>
+                  </div>
+                  <p className="text-sm text-green-700 dark:text-green-500 ml-9">
+                    Please verify your email before signing in.
+                  </p>
                 </div>
               )}
 
@@ -574,8 +591,8 @@ export const SignUp: React.FC<SignUpProps> = ({ onSwitchToSignIn }) => {
               <p className="text-gray-600 dark:text-gray-400">
                 Already have an account?{' '}
                 <button
-                  onClick={onSwitchToSignIn}
                   className="text-blue-600 dark:text-blue-400 hover:underline"
+                  disabled
                 >
                   Sign In
                 </button>
@@ -591,6 +608,63 @@ export const SignUp: React.FC<SignUpProps> = ({ onSwitchToSignIn }) => {
           </div>
         </div>
       </div>
+
+      {/* Email Verification Required Modal */}
+      {showVerificationRequiredModal && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
+          <div className="bg-white dark:bg-gray-800 rounded-lg shadow-2xl max-w-md w-full overflow-hidden animate-in fade-in zoom-in duration-300">
+            <div className="p-8 text-center">
+              <div className="flex justify-center mb-4">
+                <div className="bg-blue-100 dark:bg-blue-900/30 p-4 rounded-full">
+                  <Mail size={48} className="text-blue-600 dark:text-blue-400" />
+                </div>
+              </div>
+              
+              <h2 className="text-2xl font-bold text-gray-900 dark:text-white mb-2">
+                Email Verification Required
+              </h2>
+              
+              <p className="text-gray-600 dark:text-gray-400 mb-4">
+                We've sent a verification link to:
+              </p>
+              
+              <div className="bg-blue-50 dark:bg-blue-900/20 p-4 rounded-lg mb-6 border border-blue-200 dark:border-blue-800">
+                <p className="text-blue-900 dark:text-blue-300 font-semibold break-all">
+                  {formData.email}
+                </p>
+              </div>
+              
+              <div className="space-y-3 mb-6">
+                <div className="bg-amber-50 dark:bg-amber-900/20 p-3 rounded-lg border border-amber-200 dark:border-amber-800">
+                  <p className="text-sm text-amber-900 dark:text-amber-300">
+                    📧 Click the link in your <strong>Outlook</strong> email to verify your account
+                  </p>
+                </div>
+                
+                <div className="bg-gray-50 dark:bg-gray-700 p-3 rounded-lg border border-gray-200 dark:border-gray-600">
+                  <p className="text-sm text-gray-700 dark:text-gray-300">
+                    💡 Check your spam/junk folder if you don't see the email
+                  </p>
+                </div>
+              </div>
+              
+              <div className="space-y-3">
+                <button
+                  type="button"
+                  onClick={() => {
+                    setShowVerificationRequiredModal(false);
+                    onSwitchToSignIn();
+                  }}
+                  className="w-full inline-flex items-center justify-center gap-2 px-4 py-3 bg-blue-600 hover:bg-blue-700 text-white rounded-lg transition-colors font-medium"
+                >
+                  Got it, I'll verify my email
+                  <CheckCircle size={18} />
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 };
