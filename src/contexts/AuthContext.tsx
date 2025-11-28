@@ -123,9 +123,11 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       let isFirestoreVerified = false;
       try {
         const userDoc = await getDoc(doc(db, 'users', cred.user.uid));
-        isFirestoreVerified = userDoc.exists() && userDoc.data()?.isVerified === true;
+        if (userDoc.exists()) {
+          isFirestoreVerified = userDoc.data()?.isVerified === true;
+        }
       } catch (err) {
-        console.error('Error checking Firestore isVerified:', err);
+        console.error('Error checking Firestore user doc:', err);
       }
       
       const isVerified = isEmailVerified || isFirestoreVerified;
@@ -133,6 +135,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       if (!isVerified) {
         return { success: false, needsVerification: true, error: 'Email not verified' };
       }
+
       return { success: true };
     } catch (err: any) {
       return { success: false, error: err.message || 'Login failed' };
@@ -158,15 +161,23 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       const cred = await createUserWithEmailAndPassword(auth, userData.email!, userData.password);
       await sendEmailVerification(cred.user);
 
+      // If requesting class_rep role, initially give student role and set as pending
+      const isClassRepRequest = userData.role === 'class_rep';
+      const actualRole = isClassRepRequest ? 'student' : (userData.role || 'student');
+
       const newUser = {
         firstName: userData.firstName || '',
         lastName: userData.lastName || '',
         email: userData.email!,
-        role: userData.role || 'student',
+        role: actualRole,
         studentId: userData.studentId,
+        course: userData.course || '',
+        yearLevel: userData.yearLevel || '',
+        section: userData.section || '',
         department: userData.department || 'College of Engineering Information Technology',
         isVerified: false,
-        isPending: userData.role === 'class_rep',
+        isPending: isClassRepRequest,
+        requestedRole: isClassRepRequest ? 'class_rep' : undefined,
         theme: userData.theme || 'system',
         createdAt: new Date().toISOString(),
       } as any;

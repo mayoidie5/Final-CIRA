@@ -142,7 +142,7 @@ export const SignUp: React.FC<SignUpProps> = ({ onSwitchToSignIn }) => {
         return '';
       case 'course':
         if (!touched[fieldName] && !formData.course) return '';
-        return !formData.course ? 'Course selection is required' : '';
+        return !formData.course ? 'Course is required' : '';
       case 'section':
         if (!formData.section) return !touched[fieldName] ? '' : 'Section is required';
         if (!isSectionValid(formData.section)) return 'Format must be X-XX or XX-XX (e.g., 1-1 or 11-11)';
@@ -405,25 +405,18 @@ export const SignUp: React.FC<SignUpProps> = ({ onSwitchToSignIn }) => {
 
               <div className="grid grid-cols-2 gap-4">
                 <div>
-                  <label className="block text-gray-700 dark:text-gray-300 mb-2">Course</label>
-                  <select
+                  <label className="block text-gray-700 dark:text-gray-300 mb-2">Course <span className="text-gray-500 text-sm">(e.g BSIT)</span></label>
+                  <input
+                    type="text"
                     name="course"
                     value={formData.course}
                     onChange={handleChange}
                     onBlur={handleFieldBlur}
+                    placeholder="e.g BSIT"
                     className="w-full px-4 py-2 rounded-lg focus:ring-2 focus:ring-blue-500 dark:bg-gray-700 dark:text-white"
                     style={{ border: hasFieldError('course') ? '1px solid #ef4444' : '1px solid #d1d5db' }}
                     required
-                  >
-                    <option value="">Select Course</option>
-                    <option value="BSIT">BSIT</option>
-                    <option value="BSCS">BSCS</option>
-                    <option value="BSCE">BSCE</option>
-                    <option value="BSEE">BSEE</option>
-                    <option value="BSME">BSME</option>
-                    <option value="BSED">BSED</option>
-                    <option value="BEED">BEED</option>
-                  </select>
+                  />
                   {hasFieldError('course') && (
                     <p style={{ color: '#ef4444' }} className="text-sm mt-1">{getErrorMessage('course')}</p>
                   )}

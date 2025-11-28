@@ -3,12 +3,17 @@ import { Users, CheckCircle, XCircle, Clock, Trash2, Filter, X } from 'lucide-re
 import { User } from '../types';
 import { FormDialog } from './FormDialog';
 import { ConfirmDialog } from './ConfirmDialog';
+import { approveClassRep, rejectClassRep, getPendingClassReps } from '../utils/classRepManagement';
+import { db } from '../firebase';
+import { collection, getDocs, query, where } from 'firebase/firestore';
 
 export const UserManagement: React.FC = () => {
   const [users, setUsers] = useState<User[]>([]);
   const [pendingUsers, setPendingUsers] = useState<User[]>([]);
   const [showFilters, setShowFilters] = useState(false);
   const [showDeleteDialog, setShowDeleteDialog] = useState<{ userId: string; userName: string } | null>(null);
+  const [classRepDialog, setClassRepDialog] = useState<{ userId: string; userName: string; action: 'approve' | 'reject' } | null>(null);
+  const [rejectReason, setRejectReason] = useState('');
   const [filters, setFilters] = useState({
     role: 'all',
     status: 'all',
@@ -20,29 +25,74 @@ export const UserManagement: React.FC = () => {
     loadUsers();
   }, []);
 
-  const loadUsers = () => {
-    const storedUsers = JSON.parse(localStorage.getItem('users') || '[]');
-    setUsers(storedUsers.filter((u: User) => u.role !== 'admin' && !u.isPending));
-    setPendingUsers(storedUsers.filter((u: User) => u.isPending));
+  const loadUsers = async () => {
+    try {
+      // Load all users from Firestore
+      const usersCollection = collection(db, 'users');
+      const usersSnapshot = await getDocs(usersCollection);
+      const allUsers = usersSnapshot.docs
+        .map(doc => ({
+          id: doc.id,
+          ...doc.data(),
+        }))
+        .filter((u: any) => u.role !== 'admin') as User[];
+
+      // Separate regular users and pending class reps
+      const regularUsers = allUsers.filter(u => !u.isPending);
+      const pendingClassReps = allUsers.filter(u => u.isPending && u.requestedRole === 'class_rep');
+
+      setUsers(regularUsers);
+      setPendingUsers(pendingClassReps);
+    } catch (error) {
+      console.error('Error loading users:', error);
+      // Fallback to localStorage if Firestore fails
+      try {
+        const storedUsers = JSON.parse(localStorage.getItem('users') || '[]');
+        setUsers(storedUsers.filter((u: User) => u.role !== 'admin' && !u.isPending));
+        const pendingUsers = storedUsers.filter((u: User) => u.isPending && u.requestedRole === 'class_rep');
+        setPendingUsers(pendingUsers);
+      } catch (fallbackError) {
+        console.error('Error loading from localStorage fallback:', fallbackError);
+      }
+    }
   };
 
-  const handleApprove = (userId: string) => {
-    const storedUsers = JSON.parse(localStorage.getItem('users') || '[]');
-    const updatedUsers = storedUsers.map((u: User) =>
-      u.id === userId ? { ...u, isPending: false, isVerified: true } : u
-    );
-    localStorage.setItem('users', JSON.stringify(updatedUsers));
-    loadUsers();
+  const handleApprove = (userId: string, userName: string) => {
+    setClassRepDialog({ userId, userName, action: 'approve' });
   };
 
-  const handleReject = (userId: string) => {
-    const storedUsers = JSON.parse(localStorage.getItem('users') || '[]');
-    const updatedUsers = storedUsers.filter((u: User) => u.id !== userId);
-    localStorage.setItem('users', JSON.stringify(updatedUsers));
-    loadUsers();
+  const handleReject = (userId: string, userName: string) => {
+    setClassRepDialog({ userId, userName, action: 'reject' });
   };
 
-  const handleDeleteUser = (data: any) => {
+  const handleConfirmApprove = async () => {
+    if (!classRepDialog || classRepDialog.action !== 'approve') return;
+
+    const result = await approveClassRep(classRepDialog.userId);
+    if (result.success) {
+      await loadUsers();
+      alert(result.message);
+      setClassRepDialog(null);
+    } else {
+      alert(`Error: ${result.error}`);
+    }
+  };
+
+  const handleConfirmReject = async () => {
+    if (!classRepDialog || classRepDialog.action !== 'reject') return;
+
+    const result = await rejectClassRep(classRepDialog.userId, rejectReason || 'Rejected by admin');
+    if (result.success) {
+      await loadUsers();
+      alert(result.message);
+      setClassRepDialog(null);
+      setRejectReason('');
+    } else {
+      alert(`Error: ${result.error}`);
+    }
+  };
+
+  const handleDeleteUser = async (data: any) => {
     if (!showDeleteDialog) return;
 
     const storedUsers = JSON.parse(localStorage.getItem('users') || '[]');
@@ -72,11 +122,11 @@ export const UserManagement: React.FC = () => {
       alert(`User ${showDeleteDialog.userName} has been scheduled for deletion in 3 days. They have been notified.`);
     }
 
-    loadUsers();
+    await loadUsers();
     setShowDeleteDialog(null);
   };
 
-  const handleCancelDeletion = (userId: string) => {
+  const handleCancelDeletion = async (userId: string) => {
     const storedUsers = JSON.parse(localStorage.getItem('users') || '[]');
     const updatedUsers = storedUsers.map((u: User) =>
       u.id === userId
@@ -84,7 +134,7 @@ export const UserManagement: React.FC = () => {
         : u
     );
     localStorage.setItem('users', JSON.stringify(updatedUsers));
-    loadUsers();
+    await loadUsers();
     alert('Account deletion has been cancelled.');
   };
 
@@ -215,14 +265,14 @@ export const UserManagement: React.FC = () => {
                     <td className="py-3 px-4">
                       <div className="flex gap-2">
                         <button
-                          onClick={() => handleApprove(user.id)}
+                          onClick={() => handleApprove(user.id, `${user.firstName} ${user.lastName}`)}
                           className="p-2 bg-green-100 dark:bg-green-900/20 text-green-600 dark:text-green-400 rounded hover:bg-green-200 dark:hover:bg-green-900/30"
                           title="Approve"
                         >
                           <CheckCircle size={18} />
                         </button>
                         <button
-                          onClick={() => handleReject(user.id)}
+                          onClick={() => handleReject(user.id, `${user.firstName} ${user.lastName}`)}
                           className="p-2 bg-red-100 dark:bg-red-900/20 text-red-600 dark:text-red-400 rounded hover:bg-red-200 dark:hover:bg-red-900/30"
                           title="Reject"
                         >
@@ -452,6 +502,67 @@ export const UserManagement: React.FC = () => {
           onCancel={() => setShowDeleteDialog(null)}
           submitLabel="Delete User"
         />
+      )}
+
+      {/* Approve Class Rep Dialog */}
+      {classRepDialog?.action === 'approve' && (
+        <ConfirmDialog
+          title="Approve Class Representative"
+          message={`Are you sure you want to approve ${classRepDialog.userName} as a Class Representative?`}
+          confirmText="Approve"
+          cancelText="Cancel"
+          onConfirm={handleConfirmApprove}
+          onCancel={() => setClassRepDialog(null)}
+          type="info"
+        />
+      )}
+
+      {/* Reject Class Rep Dialog */}
+      {classRepDialog?.action === 'reject' && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
+          <div className="bg-white dark:bg-gray-800 rounded-lg shadow-xl max-w-md w-full">
+            <div className="p-6 border-b border-gray-200 dark:border-gray-700">
+              <h3 className="text-gray-800 dark:text-white">Reject Class Representative Request</h3>
+            </div>
+
+            <div className="p-6 space-y-4">
+              <p className="text-gray-600 dark:text-gray-400">
+                Are you sure you want to reject {classRepDialog.userName}'s Class Representative request?
+              </p>
+
+              <div>
+                <label className="block text-gray-700 dark:text-gray-300 mb-2">
+                  Reason for Rejection (Optional)
+                </label>
+                <textarea
+                  value={rejectReason}
+                  onChange={e => setRejectReason(e.target.value)}
+                  placeholder="Enter reason for rejection..."
+                  rows={4}
+                  className="w-full px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 dark:bg-gray-700 dark:text-white"
+                />
+              </div>
+
+              <div className="flex gap-3">
+                <button
+                  onClick={() => {
+                    setClassRepDialog(null);
+                    setRejectReason('');
+                  }}
+                  className="flex-1 px-4 py-2 border border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-300 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors"
+                >
+                  Cancel
+                </button>
+                <button
+                  onClick={handleConfirmReject}
+                  className="flex-1 px-4 py-2 bg-red-600 hover:bg-red-700 text-white rounded-lg transition-colors"
+                >
+                  Reject
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
       )}
     </div>
   );
