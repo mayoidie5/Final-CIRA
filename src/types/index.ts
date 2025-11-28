@@ -23,6 +23,7 @@ export interface User {
   department: string;
   isVerified: boolean;
   isPending?: boolean;
+  requestedRole?: UserRole;
   pendingDeletion?: boolean;
   deletionDate?: string;
   deletionReason?: string;
