@@ -1,12 +1,16 @@
 import React, { useState, useEffect } from 'react';
 import { Plus, X, Save, Edit2, Trash2, GripVertical, ChevronUp, ChevronDown } from 'lucide-react';
-import { FormConfig } from '../types';
+import { FormConfig, Building, Room } from '../types';
 import { DEFAULT_FORM_CONFIG } from '../utils/mockData';
 import { FormDialog } from './FormDialog';
 import { ConfirmDialog } from './ConfirmDialog';
 import { SuccessToast } from './SuccessToast';
+import { db, auth } from '../firebase';
+import { doc, setDoc, getDoc, updateDoc } from 'firebase/firestore';
+import { useAuth } from '../contexts/AuthContext';
 
 export const FormEditor: React.FC = () => {
+  const { user } = useAuth();
   const [formConfig, setFormConfig] = useState<FormConfig>(DEFAULT_FORM_CONFIG);
   const [originalConfig, setOriginalConfig] = useState<FormConfig>(DEFAULT_FORM_CONFIG);
   const [editMode, setEditMode] = useState(false);
@@ -15,43 +19,218 @@ export const FormEditor: React.FC = () => {
   const [draggedItem, setDraggedItem] = useState<{ type: string; index: number; parentIndices?: number[] } | null>(null);
   const [showSaveConfirm, setShowSaveConfirm] = useState(false);
   const [showSuccessToast, setShowSuccessToast] = useState(false);
+  const [isLoading, setIsLoading] = useState(true);
+  const [activeTab, setActiveTab] = useState<'editor' | 'preview'>('editor');
+  const [previewFormData, setPreviewFormData] = useState({
+    campus: '',
+    building: '',
+    room: '',
+    unitId: '',
+    issueType: '',
+    issueSubtype: '',
+    description: '',
+  });
+  const [previewAvailableBuildings, setPreviewAvailableBuildings] = useState<Building[]>([]);
+  const [previewAvailableRooms, setPreviewAvailableRooms] = useState<Room[]>([]);
+  const [previewAvailableUnitIds, setPreviewAvailableUnitIds] = useState<string[]>([]);
+  const [previewAvailableSubtypes, setPreviewAvailableSubtypes] = useState<string[]>([]);
 
   useEffect(() => {
-    const stored = localStorage.getItem('formConfig');
-    if (stored) {
-      const config = JSON.parse(stored);
-      setFormConfig(config);
-      setOriginalConfig(config);
+    loadFormConfig();
+    
+    // Debug: Check current user's Firestore document
+    if (user) {
+      const checkUserDoc = async () => {
+        try {
+          const userDoc = await getDoc(doc(db, 'users', user.id));
+          if (userDoc.exists()) {
+            console.log('User Firestore doc:', userDoc.data());
+            console.log('User role in Firestore:', userDoc.data().role);
+          } else {
+            console.warn('User Firestore document does not exist:', user.id);
+          }
+        } catch (err) {
+          console.error('Error checking user document:', err);
+        }
+      };
+      checkUserDoc();
     }
-  }, []);
+  }, [user]);
+
+  const loadFormConfig = async () => {
+    try {
+      setIsLoading(true);
+      console.log('Loading form config from Firestore...');
+      
+      // Try to load from Firestore
+      const configRef = doc(db, 'formConfig', 'mainConfig');
+      const configSnap = await getDoc(configRef);
+      
+      if (configSnap.exists()) {
+        const config = configSnap.data() as FormConfig;
+        console.log('Loaded from Firestore:', config);
+        setFormConfig(config);
+        setOriginalConfig(JSON.parse(JSON.stringify(config)));
+        // Update localStorage as fallback
+        localStorage.setItem('formConfig', JSON.stringify(config));
+      } else {
+        console.log('No Firestore document found, initializing with default config...');
+        // Initialize Firestore with DEFAULT_FORM_CONFIG if document doesn't exist
+        try {
+          await setDoc(configRef, {
+            campuses: DEFAULT_FORM_CONFIG.campuses,
+            issueTypes: DEFAULT_FORM_CONFIG.issueTypes,
+            createdAt: new Date().toISOString(),
+          });
+          console.log('Initialized Firestore with default config');
+        } catch (initError) {
+          console.warn('Could not initialize Firestore, using localStorage fallback', initError);
+        }
+        
+        setFormConfig(DEFAULT_FORM_CONFIG);
+        setOriginalConfig(JSON.parse(JSON.stringify(DEFAULT_FORM_CONFIG)));
+        localStorage.setItem('formConfig', JSON.stringify(DEFAULT_FORM_CONFIG));
+      }
+    } catch (error) {
+      console.error('Error loading form config from Firestore:', error);
+      // Fallback to localStorage
+      const stored = localStorage.getItem('formConfig');
+      if (stored) {
+        const config = JSON.parse(stored);
+        console.log('Error loading Firestore, fallback to localStorage:', config);
+        setFormConfig(config);
+        setOriginalConfig(JSON.parse(JSON.stringify(config)));
+      } else {
+        console.log('Error loading Firestore, fallback to DEFAULT_FORM_CONFIG');
+        setFormConfig(DEFAULT_FORM_CONFIG);
+        setOriginalConfig(JSON.parse(JSON.stringify(DEFAULT_FORM_CONFIG)));
+      }
+    } finally {
+      setIsLoading(false);
+    }
+  };
 
   useEffect(() => {
     // Check if config has changed from original
     setHasChanges(JSON.stringify(formConfig) !== JSON.stringify(originalConfig));
   }, [formConfig, originalConfig]);
 
+  useEffect(() => {
+    // Update preview available options when formConfig changes
+    if (previewFormData.campus) {
+      const selectedCampus = formConfig.campuses.find(c => c.name === previewFormData.campus);
+      setPreviewAvailableBuildings(selectedCampus?.buildings || []);
+      
+      // If building is selected, update available rooms
+      if (previewFormData.building && selectedCampus) {
+        const selectedBuilding = selectedCampus.buildings.find(b => b.name === previewFormData.building);
+        setPreviewAvailableRooms(selectedBuilding?.rooms || []);
+        
+        // If room is selected, update available unit IDs
+        if (previewFormData.room && selectedBuilding) {
+          const selectedRoom = selectedBuilding.rooms.find(r => r.name === previewFormData.room);
+          setPreviewAvailableUnitIds(selectedRoom?.unitIds || []);
+        }
+      }
+    }
+    
+    // Update available subtypes when formConfig changes
+    if (previewFormData.issueType) {
+      const selectedType = formConfig.issueTypes.find(t => t.name === previewFormData.issueType);
+      setPreviewAvailableSubtypes(selectedType?.subtypes || []);
+    }
+  }, [formConfig, previewFormData.campus, previewFormData.building, previewFormData.room, previewFormData.issueType]);
+
   const saveConfig = () => {
-    setShowSaveConfirm(true);
+    confirmSave();
   };
 
-  const confirmSave = () => {
-    localStorage.setItem('formConfig', JSON.stringify(formConfig));
-    setOriginalConfig(formConfig);
-    setHasChanges(false);
-    setShowSaveConfirm(false);
-    setShowSuccessToast(true);
-    setEditMode(false);
+  const confirmSave = async () => {
+    try {
+      console.log('Starting save...');
+      console.log('Current user:', user);
+      console.log('User role:', user?.role);
+      console.log('Is admin?', user?.role === 'admin');
+      console.log('Saving config:', formConfig);
+      
+      // Check if user is authenticated and is admin
+      if (!user) {
+        throw new Error('Not authenticated. Please log in first.');
+      }
+      
+      if (user.role !== 'admin') {
+        throw new Error(`Permission denied. Only admins can edit form configuration. Your role: ${user.role}`);
+      }
+      
+      // Validate that formConfig has required structure
+      if (!formConfig.campuses || !formConfig.issueTypes) {
+        throw new Error('Invalid form configuration structure');
+      }
+      
+      // Save to Firestore
+      const configRef = doc(db, 'formConfig', 'mainConfig');
+      
+      console.log('Writing to Firestore at path: formConfig/mainConfig');
+      console.log('Auth UID:', auth.currentUser?.uid);
+      
+      // Use merge: false to replace entire document
+      await setDoc(configRef, {
+        campuses: formConfig.campuses,
+        issueTypes: formConfig.issueTypes,
+        updatedAt: new Date().toISOString(),
+      });
+      
+      console.log('Successfully saved to Firestore');
+      
+      // Update localStorage
+      localStorage.setItem('formConfig', JSON.stringify(formConfig));
+      setOriginalConfig(JSON.parse(JSON.stringify(formConfig)));
+      setHasChanges(false);
+      setShowSaveConfirm(false);
+      setShowSuccessToast(true);
+      setEditMode(false);
+    } catch (error) {
+      console.error('Error saving form config:', error);
+      const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+      const errorCode = (error as any)?.code || 'UNKNOWN';
+      console.error('Error code:', errorCode);
+      console.log('Current user:', user);
+      console.log('Current user role:', user?.role);
+      
+      if (errorCode === 'permission-denied') {
+        alert(`Failed to save: Permission denied (${errorCode}).\n\nChecklist:\n1. Are you logged in as an admin?\n2. Is your user's role set to 'admin' in Firestore?\n3. Have you deployed the Firestore rules?\n\nYour current role: ${user?.role || 'UNKNOWN'}\nYour ID: ${user?.id || 'UNKNOWN'}`);
+      } else if (errorMessage.includes('Permission denied') || errorMessage.includes('permission')) {
+        alert(`Failed to save: ${errorMessage}\n\nMake sure your user role is set to 'admin' in the Firestore database.`);
+      } else {
+        alert(`Failed to save configuration: ${errorMessage}`);
+      }
+    }
   };
 
   const cancelEdit = () => {
     if (hasChanges) {
-      if (confirm('You have unsaved changes. Are you sure you want to cancel?')) {
-        setFormConfig(originalConfig);
-        setEditMode(false);
-        setHasChanges(false);
-      }
+      // Show confirmation before saving
+      setShowSaveConfirm(true);
     } else {
       setEditMode(false);
+    }
+  };
+
+  // Helper function to setup admin role for current user
+  const setupAdminRole = async () => {
+    if (!user) {
+      alert('No user logged in');
+      return;
+    }
+    
+    try {
+      const userRef = doc(db, 'users', user.id);
+      await updateDoc(userRef, { role: 'admin' });
+      console.log('Set current user to admin role');
+      alert(`Successfully set ${user.email} as admin!\n\nPlease refresh the page.`);
+    } catch (error: any) {
+      console.error('Error setting admin role:', error);
+      alert(`Failed to set admin role: ${error.message}\n\nYou may need admin access or the user document might not exist yet.`);
     }
   };
 
@@ -205,6 +384,200 @@ export const FormEditor: React.FC = () => {
     setFormConfig({ ...formConfig, issueTypes: newIssueTypes });
   };
 
+  // Preview form handlers
+  const handlePreviewCampusChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
+    const campus = e.target.value;
+    setPreviewFormData(prev => ({ ...prev, campus, building: '', room: '', unitId: '' }));
+    const selectedCampus = formConfig.campuses.find(c => c.name === campus);
+    setPreviewAvailableBuildings(selectedCampus?.buildings || []);
+    setPreviewAvailableRooms([]);
+    setPreviewAvailableUnitIds([]);
+    setPreviewAvailableSubtypes([]);
+  };
+
+  const handlePreviewBuildingChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
+    const building = e.target.value;
+    setPreviewFormData(prev => ({ ...prev, building, room: '', unitId: '' }));
+    const selectedBuilding = previewAvailableBuildings.find(b => b.name === building);
+    setPreviewAvailableRooms(selectedBuilding?.rooms || []);
+    setPreviewAvailableUnitIds([]);
+  };
+
+  const handlePreviewRoomChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
+    const room = e.target.value;
+    setPreviewFormData(prev => ({ ...prev, room, unitId: '' }));
+    const selectedRoom = previewAvailableRooms.find(r => r.name === room);
+    setPreviewAvailableUnitIds(selectedRoom?.unitIds || []);
+  };
+
+  const handlePreviewUnitIdChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
+    setPreviewFormData(prev => ({ ...prev, unitId: e.target.value }));
+  };
+
+  const handlePreviewIssueTypeChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
+    const issueType = e.target.value;
+    setPreviewFormData(prev => ({ ...prev, issueType, issueSubtype: '' }));
+    const selectedIssueType = formConfig.issueTypes.find(t => t.name === issueType);
+    setPreviewAvailableSubtypes(selectedIssueType?.subtypes || []);
+  };
+
+  const handlePreviewIssueSubtypeChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
+    setPreviewFormData(prev => ({ ...prev, issueSubtype: e.target.value }));
+  };
+
+  // Helper function to render form preview
+  const renderFormPreview = (config: FormConfig) => {
+    return (
+      <div className="border border-gray-200 dark:border-gray-700 rounded-lg p-6 bg-gray-50 dark:bg-gray-900">
+        <h4 className="text-gray-800 dark:text-white mb-4 font-semibold">Report an Issue</h4>
+        
+        <div className="space-y-6">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+            <div>
+              <label className="block text-gray-700 dark:text-gray-300 mb-2 text-sm font-medium">Campus *</label>
+              <select 
+                value={previewFormData.campus}
+                onChange={handlePreviewCampusChange}
+                className="w-full px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg dark:bg-gray-700 dark:text-white focus:ring-2 focus:ring-blue-500"
+              >
+                <option value="">Select Campus</option>
+                {config.campuses.map((campus, idx) => (
+                  <option key={idx}>{campus.name}</option>
+                ))}
+              </select>
+              <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
+                {config.campuses.length} campus(es) available
+              </p>
+            </div>
+
+            <div>
+              <label className="block text-gray-700 dark:text-gray-300 mb-2 text-sm font-medium">Building *</label>
+              <select 
+                value={previewFormData.building}
+                onChange={handlePreviewBuildingChange}
+                disabled={!previewFormData.campus}
+                className="w-full px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg dark:bg-gray-700 dark:text-white focus:ring-2 focus:ring-blue-500 disabled:opacity-50 disabled:cursor-not-allowed"
+              >
+                <option value="">Select Building</option>
+                {previewAvailableBuildings.map((building, idx) => (
+                  <option key={idx}>{building.name}</option>
+                ))}
+              </select>
+            </div>
+
+            <div>
+              <label className="block text-gray-700 dark:text-gray-300 mb-2 text-sm font-medium">Room *</label>
+              <select 
+                value={previewFormData.room}
+                onChange={handlePreviewRoomChange}
+                disabled={!previewFormData.building}
+                className="w-full px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg dark:bg-gray-700 dark:text-white focus:ring-2 focus:ring-blue-500 disabled:opacity-50 disabled:cursor-not-allowed"
+              >
+                <option value="">Select Room</option>
+                {previewAvailableRooms.map((room, idx) => (
+                  <option key={idx}>{room.name}</option>
+                ))}
+              </select>
+            </div>
+
+            <div>
+              <label className="block text-gray-700 dark:text-gray-300 mb-2 text-sm font-medium">Unit ID *</label>
+              <select 
+                value={previewFormData.unitId}
+                onChange={handlePreviewUnitIdChange}
+                disabled={!previewFormData.room}
+                className="w-full px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg dark:bg-gray-700 dark:text-white focus:ring-2 focus:ring-blue-500 disabled:opacity-50 disabled:cursor-not-allowed"
+              >
+                <option value="">Select Unit ID</option>
+                {previewAvailableUnitIds.map((unitId, idx) => (
+                  <option key={idx}>{unitId}</option>
+                ))}
+              </select>
+            </div>
+
+            <div>
+              <label className="block text-gray-700 dark:text-gray-300 mb-2 text-sm font-medium">Issue Type *</label>
+              <select 
+                value={previewFormData.issueType}
+                onChange={handlePreviewIssueTypeChange}
+                className="w-full px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg dark:bg-gray-700 dark:text-white focus:ring-2 focus:ring-blue-500"
+              >
+                <option value="">Select Issue Type</option>
+                {config.issueTypes.map((type, idx) => (
+                  <option key={idx}>{type.name}</option>
+                ))}
+              </select>
+              <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
+                {config.issueTypes.length} issue type(s) available
+              </p>
+            </div>
+
+            <div>
+              <label className="block text-gray-700 dark:text-gray-300 mb-2 text-sm font-medium">Issue Subtype *</label>
+              <select 
+                value={previewFormData.issueSubtype}
+                onChange={handlePreviewIssueSubtypeChange}
+                disabled={!previewFormData.issueType}
+                className="w-full px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg dark:bg-gray-700 dark:text-white focus:ring-2 focus:ring-blue-500 disabled:opacity-50 disabled:cursor-not-allowed"
+              >
+                <option value="">Select Issue Subtype</option>
+                {previewAvailableSubtypes.map((subtype, idx) => (
+                  <option key={idx}>{subtype}</option>
+                ))}
+              </select>
+            </div>
+          </div>
+
+          <div>
+            <label className="block text-gray-700 dark:text-gray-300 mb-2 text-sm font-medium">Issue Description *</label>
+            <textarea
+              value={previewFormData.description}
+              onChange={(e) => setPreviewFormData(prev => ({ ...prev, description: e.target.value }))}
+              className="w-full px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg dark:bg-gray-700 dark:text-white focus:ring-2 focus:ring-blue-500"
+              rows={4}
+              placeholder="Describe the issue in detail..."
+            />
+          </div>
+
+          <div>
+            <label className="block text-gray-700 dark:text-gray-300 mb-2 text-sm font-medium">Upload Images</label>
+            <div className="border-2 border-dashed border-gray-300 dark:border-gray-600 rounded-lg p-6 text-center opacity-60">
+              <p className="text-gray-600 dark:text-gray-400 text-sm">Click to upload images</p>
+            </div>
+          </div>
+        </div>
+
+        <div className="mt-6 flex gap-4">
+          <button className="flex-1 bg-blue-600 text-white py-2 rounded-lg opacity-60 cursor-not-allowed">
+            Submit Report
+          </button>
+          <button className="px-6 bg-gray-200 dark:bg-gray-700 text-gray-700 dark:text-gray-300 py-2 rounded-lg opacity-60 cursor-not-allowed">
+            Clear
+          </button>
+        </div>
+
+        <div className="mt-6 grid grid-cols-3 gap-4 text-center">
+          <div className="p-4 bg-blue-50 dark:bg-blue-900/20 rounded-lg">
+            <p className="text-2xl font-bold text-blue-600 dark:text-blue-400">{config.campuses.length}</p>
+            <p className="text-xs text-gray-600 dark:text-gray-400">Campuses</p>
+          </div>
+          <div className="p-4 bg-green-50 dark:bg-green-900/20 rounded-lg">
+            <p className="text-2xl font-bold text-green-600 dark:text-green-400">{config.issueTypes.length}</p>
+            <p className="text-xs text-gray-600 dark:text-gray-400">Issue Types</p>
+          </div>
+          <div className="p-4 bg-purple-50 dark:bg-purple-900/20 rounded-lg">
+            <p className="text-2xl font-bold text-purple-600 dark:text-purple-400">
+              {config.campuses.reduce((total, campus) => 
+                total + campus.buildings.reduce((buildingTotal, building) => 
+                  buildingTotal + building.rooms.length, 0), 0)}
+            </p>
+            <p className="text-xs text-gray-600 dark:text-gray-400">Total Rooms</p>
+          </div>
+        </div>
+      </div>
+    );
+  };
+
   // Drag and drop handlers
   const handleDragStart = (type: string, index: number, parentIndices?: number[]) => {
     setDraggedItem({ type, index, parentIndices });
@@ -240,58 +613,125 @@ export const FormEditor: React.FC = () => {
 
   return (
     <div className="max-w-7xl mx-auto p-6 space-y-6">
-      <div className="flex items-center justify-between">
-        <div>
-          <h2 className="text-gray-800 dark:text-white mb-2">Form Editor</h2>
-          <p className="text-gray-600 dark:text-gray-400">Configure form options for issue reporting</p>
+      {isLoading && (
+        <div className="flex items-center justify-center p-8">
+          <div className="text-gray-600 dark:text-gray-400">Loading form configuration...</div>
         </div>
-        <div className="flex items-center gap-3">
-          {!editMode ? (
-            <button
-              onClick={() => setEditMode(true)}
-              className="flex items-center gap-2 bg-blue-600 hover:bg-blue-700 text-white px-6 py-2 rounded-lg transition-colors"
-            >
-              <Edit2 size={20} />
-              Edit Form
-            </button>
-          ) : (
-            <>
-              <button
-                onClick={cancelEdit}
-                className="flex items-center gap-2 bg-gray-500 hover:bg-gray-600 text-white px-6 py-2 rounded-lg transition-colors"
-              >
-                <X size={20} />
-                Cancel
-              </button>
-              {hasChanges && (
+      )}
+
+      {!isLoading && (
+        <>
+          <div className="flex items-center justify-between">
+            <div>
+              <h2 className="text-gray-800 dark:text-white mb-2">Form Editor</h2>
+              <p className="text-gray-600 dark:text-gray-400">Configure form options for issue reporting</p>
+            </div>
+            <div className="flex items-center gap-3">
+              {!editMode ? (
                 <button
-                  onClick={saveConfig}
-                  className="flex items-center gap-2 bg-green-600 hover:bg-green-700 text-white px-6 py-2 rounded-lg transition-colors"
+                  onClick={() => setEditMode(true)}
+                  className="flex items-center gap-2 bg-blue-600 hover:bg-blue-700 text-white px-6 py-2 rounded-lg transition-colors"
                 >
-                  <Save size={20} />
-                  Save Configuration
+                  <Edit2 size={20} />
+                  Edit Form
+                </button>
+              ) : (
+                <div className="flex items-center gap-3">
+                  <button
+                    onClick={cancelEdit}
+                    className="flex items-center gap-2 bg-green-600 hover:bg-green-700 text-white px-6 py-2 rounded-lg transition-colors"
+                  >
+                    <Save size={20} />
+                    Done
+                  </button>
+                  <button
+                    onClick={() => {
+                      setFormConfig(originalConfig);
+                      setEditMode(false);
+                      setHasChanges(false);
+                    }}
+                    className="flex items-center gap-2 bg-gray-600 hover:bg-gray-700 text-white px-6 py-2 rounded-lg transition-colors"
+                  >
+                    <X size={20} />
+                    Discard Changes
+                  </button>
+                </div>
+              )}
+            </div>
+          </div>
+
+          {/* Unsaved Changes Warning */}
+          {editMode && JSON.stringify(formConfig) !== JSON.stringify(originalConfig) && (
+            <div className="bg-yellow-50 dark:bg-yellow-900/20 border border-yellow-200 dark:border-yellow-700 rounded-lg p-4">
+              <p className="text-sm text-yellow-900 dark:text-yellow-200">
+                <strong>⚠️ You have unsaved changes!</strong> Click "Done" and then "Save Changes" to save your modifications to the form configuration. If you navigate away without saving, your changes will be lost.
+              </p>
+            </div>
+          )}
+
+          {/* Debug Info Section */}
+          <div className="bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-lg p-4">
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-sm text-blue-900 dark:text-blue-200">
+                  <strong>Logged in as:</strong> {user?.email} <br />
+                  <strong>Role:</strong> {user?.role} <strong>ID:</strong> {user?.id}
+                </p>
+              </div>
+              {user?.role !== 'admin' && (
+                <button
+                  onClick={setupAdminRole}
+                  className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg text-sm transition-colors"
+                >
+                  Set as Admin
                 </button>
               )}
-            </>
-          )}
-        </div>
-      </div>
+            </div>
+          </div>
 
-      {/* Campus and Location Configuration */}
-      <div className={`bg-white dark:bg-gray-800 rounded-lg shadow border border-gray-200 dark:border-gray-700 ${!editMode ? 'opacity-60 pointer-events-none' : ''}`}>
-        <div className="p-6 border-b border-gray-200 dark:border-gray-700 flex items-center justify-between">
-          <h3 className="text-gray-800 dark:text-white">Campus & Location Configuration</h3>
+          {/* Tabs Section */}
+      <div className="bg-white dark:bg-gray-800 rounded-lg shadow border border-gray-200 dark:border-gray-700 overflow-hidden">
+        <div className="flex border-b border-gray-200 dark:border-gray-700">
           <button
-            onClick={() => setShowDialog({ type: 'campus' })}
-            disabled={!editMode}
-            className="flex items-center gap-2 bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+            onClick={() => setActiveTab('editor')}
+            className={`flex-1 px-6 py-4 font-medium transition-colors ${
+              activeTab === 'editor'
+                ? 'text-blue-600 dark:text-blue-400 border-b-2 border-blue-600 dark:border-blue-400'
+                : 'text-gray-600 dark:text-gray-400 hover:text-gray-800 dark:hover:text-gray-300'
+            }`}
           >
-            <Plus size={18} />
-            Add Campus
+            Form Configuration
+          </button>
+          <button
+            onClick={() => setActiveTab('preview')}
+            className={`flex-1 px-6 py-4 font-medium transition-colors ${
+              activeTab === 'preview'
+                ? 'text-blue-600 dark:text-blue-400 border-b-2 border-blue-600 dark:border-blue-400'
+                : 'text-gray-600 dark:text-gray-400 hover:text-gray-800 dark:hover:text-gray-300'
+            }`}
+          >
+            Form Preview
           </button>
         </div>
 
-        <div className="p-6 space-y-6">
+        {/* Editor Tab Content */}
+        {activeTab === 'editor' && (
+          <div className="space-y-6 pt-6">
+            {/* Campus and Location Configuration */}
+            <div className={`bg-white dark:bg-gray-800 rounded-lg border-t border-gray-200 dark:border-gray-700 ${!editMode ? 'opacity-60 pointer-events-none' : ''}`}>
+              <div className="p-6 border-b border-gray-200 dark:border-gray-700 flex items-center justify-between">
+                <h3 className="text-gray-800 dark:text-white">Campus & Location Configuration</h3>
+                <button
+                  onClick={() => setShowDialog({ type: 'campus' })}
+                  disabled={!editMode}
+                  className="flex items-center gap-2 bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                >
+                  <Plus size={18} />
+                  Add Campus
+                </button>
+              </div>
+
+              <div className="p-6 space-y-6">
           {formConfig.campuses.map((campus, campusIndex) => (
             <div 
               key={campusIndex} 
@@ -460,8 +900,8 @@ export const FormEditor: React.FC = () => {
         </div>
       </div>
 
-      {/* Issue Types Configuration */}
-      <div className={`bg-white dark:bg-gray-800 rounded-lg shadow border border-gray-200 dark:border-gray-700 ${!editMode ? 'opacity-60 pointer-events-none' : ''}`}>
+            {/* Issue Types Configuration */}
+            <div className={`bg-white dark:bg-gray-800 rounded-lg border-t border-gray-200 dark:border-gray-700 ${!editMode ? 'opacity-60 pointer-events-none' : ''}`}>
         <div className="p-6 border-b border-gray-200 dark:border-gray-700 flex items-center justify-between">
           <h3 className="text-gray-800 dark:text-white">Issue Types Configuration</h3>
           <button
@@ -577,6 +1017,37 @@ export const FormEditor: React.FC = () => {
           ))}
         </div>
       </div>
+          </div>
+          )}
+
+        {/* Preview Tab Content */}
+        {activeTab === 'preview' && (
+          <div className="p-6 space-y-6">
+            {/* Current Form Preview */}
+            <div className="bg-gray-50 dark:bg-gray-900 rounded-lg border border-gray-200 dark:border-gray-700 p-6">
+              <div className="mb-6">
+                <h4 className="text-gray-800 dark:text-white mb-1 font-semibold">Current Form Preview</h4>
+                <p className="text-gray-600 dark:text-gray-400 text-sm">How the Report Issue form appears to users right now</p>
+              </div>
+              {renderFormPreview(originalConfig)}
+            </div>
+
+            {/* Preview After Changes */}
+            {editMode && JSON.stringify(formConfig) !== JSON.stringify(originalConfig) && (
+              <div className="bg-orange-50 dark:bg-orange-900/20 rounded-lg border border-orange-200 dark:border-orange-700 p-6">
+                <div className="mb-6">
+                  <div className="flex items-center gap-2">
+                    <div className="w-3 h-3 bg-orange-500 rounded-full"></div>
+                    <h4 className="text-gray-800 dark:text-white mb-0 font-semibold">Preview After Changes</h4>
+                  </div>
+                  <p className="text-gray-600 dark:text-gray-400 text-sm mt-1">This is how the form will look after you save your changes</p>
+                </div>
+                {renderFormPreview(formConfig)}
+              </div>
+            )}
+          </div>
+        )}
+      </div>
 
       {/* Form Dialog */}
       {showDialog && (
@@ -683,12 +1154,18 @@ export const FormEditor: React.FC = () => {
       {/* Save Confirmation Dialog */}
       {showSaveConfirm && (
         <ConfirmDialog
-          title="Save Configuration"
-          message="Are you sure you want to save the form configuration? This will update the form options for all users."
-          confirmText="Save"
+          title="Save Changes"
+          message="Are you sure you want to save these changes to the form configuration? This will update the form options for all users."
+          confirmText="Save Changes"
+          cancelText="Discard Changes"
           onConfirm={confirmSave}
-          onCancel={() => setShowSaveConfirm(false)}
-          type="info"
+          onCancel={() => {
+            setShowSaveConfirm(false);
+            setFormConfig(originalConfig);
+            setEditMode(false);
+            setHasChanges(false);
+          }}
+          type="warning"
         />
       )}
 
@@ -698,6 +1175,8 @@ export const FormEditor: React.FC = () => {
           message="Form configuration saved successfully!"
           onClose={() => setShowSuccessToast(false)}
         />
+      )}
+      </>
       )}
     </div>
   );

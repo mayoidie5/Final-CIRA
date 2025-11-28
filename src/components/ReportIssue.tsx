@@ -2,9 +2,11 @@ import React, { useState, useEffect } from 'react';
 import { Upload, X, AlertCircle } from 'lucide-react';
 import { useTickets } from '../hooks/useTickets';
 import { DEFAULT_FORM_CONFIG } from '../utils/mockData';
-import { Campus, Building, Room } from '../types';
+import { Campus, Building, Room, FormConfig } from '../types';
 import { ValidationAlert } from './ValidationAlert';
 import { ConfirmDialog } from './ConfirmDialog';
+import { db } from '../firebase';
+import { doc, onSnapshot } from 'firebase/firestore';
 
 interface ReportIssueProps {
   onSuccess: () => void;
@@ -12,7 +14,8 @@ interface ReportIssueProps {
 
 export const ReportIssue: React.FC<ReportIssueProps> = ({ onSuccess }) => {
   const { createTicket } = useTickets();
-  const [formConfig] = useState(DEFAULT_FORM_CONFIG);
+  const [formConfig, setFormConfig] = useState<FormConfig>(DEFAULT_FORM_CONFIG);
+  const [isLoadingConfig, setIsLoadingConfig] = useState(true);
   
   const [formData, setFormData] = useState({
     campus: '',
@@ -36,12 +39,83 @@ export const ReportIssue: React.FC<ReportIssueProps> = ({ onSuccess }) => {
   const [confirmSubmit, setConfirmSubmit] = useState(false);
 
   useEffect(() => {
+    const unsubscribe = loadFormConfig();
+    
+    // Cleanup listener when component unmounts
+    return () => {
+      if (unsubscribe) {
+        unsubscribe();
+      }
+    };
+  }, []);
+
+  const loadFormConfig = () => {
+    try {
+      setIsLoadingConfig(true);
+      
+      // Set up real-time listener for Firestore formConfig
+      const configRef = doc(db, 'formConfig', 'mainConfig');
+      
+      const unsubscribe = onSnapshot(
+        configRef,
+        (configSnap) => {
+          if (configSnap.exists()) {
+            const config = configSnap.data() as FormConfig;
+            console.log('Form config updated from Firestore:', config);
+            setFormConfig(config);
+            // Update localStorage as fallback
+            localStorage.setItem('formConfig', JSON.stringify(config));
+          } else {
+            console.log('No formConfig document found, using localStorage or default');
+            // Load from localStorage if Firestore doesn't have it
+            const stored = localStorage.getItem('formConfig');
+            if (stored) {
+              const config = JSON.parse(stored);
+              setFormConfig(config);
+            } else {
+              setFormConfig(DEFAULT_FORM_CONFIG);
+            }
+          }
+          setIsLoadingConfig(false);
+        },
+        (error) => {
+          console.error('Error setting up real-time listener for form config:', error);
+          setIsLoadingConfig(false);
+          
+          // Fallback to localStorage
+          const stored = localStorage.getItem('formConfig');
+          if (stored) {
+            const config = JSON.parse(stored);
+            setFormConfig(config);
+          } else {
+            setFormConfig(DEFAULT_FORM_CONFIG);
+          }
+        }
+      );
+
+      // Return cleanup function to unsubscribe when component unmounts
+      return unsubscribe;
+    } catch (error) {
+      console.error('Error loading form config:', error);
+      setIsLoadingConfig(false);
+      // Fallback to localStorage
+      const stored = localStorage.getItem('formConfig');
+      if (stored) {
+        const config = JSON.parse(stored);
+        setFormConfig(config);
+      } else {
+        setFormConfig(DEFAULT_FORM_CONFIG);
+      }
+    }
+  };
+
+  useEffect(() => {
     if (formData.campus) {
       const campus = formConfig.campuses.find(c => c.name === formData.campus);
       setAvailableBuildings(campus?.buildings || []);
       setFormData(prev => ({ ...prev, building: '', room: '', unitId: '' }));
     }
-  }, [formData.campus]);
+  }, [formData.campus, formConfig]);
 
   useEffect(() => {
     if (formData.building) {
@@ -65,7 +139,7 @@ export const ReportIssue: React.FC<ReportIssueProps> = ({ onSuccess }) => {
       setAvailableSubtypes(issueType?.subtypes || []);
       setFormData(prev => ({ ...prev, issueSubtype: '', otherIssueSubtype: '' }));
     }
-  }, [formData.issueType]);
+  }, [formData.issueType, formConfig]);
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>) => {
     const { name, value } = e.target;
@@ -145,6 +219,11 @@ export const ReportIssue: React.FC<ReportIssueProps> = ({ onSuccess }) => {
       <div className="bg-white dark:bg-gray-800 rounded-lg shadow border border-gray-200 dark:border-gray-700 p-6">
         <h2 className="text-gray-800 dark:text-white mb-6">Report an Issue</h2>
 
+        {isLoadingConfig ? (
+          <div className="flex items-center justify-center p-8">
+            <div className="text-gray-600 dark:text-gray-400">Loading form configuration...</div>
+          </div>
+        ) : (
         <form onSubmit={handleSubmit} className="space-y-6">
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
             <div>
@@ -352,6 +431,7 @@ export const ReportIssue: React.FC<ReportIssueProps> = ({ onSuccess }) => {
             </button>
           </div>
         </form>
+        )}
       </div>
 
       {/* Validation Alert */}
