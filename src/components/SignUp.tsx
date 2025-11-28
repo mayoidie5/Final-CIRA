@@ -72,58 +72,87 @@ export const SignUp: React.FC<SignUpProps> = ({ onSwitchToSignIn }) => {
     return /^\d{2}-\d{4}$/.test(id);
   };
 
-  const hasFieldError = (fieldName: string): boolean => {
-    if (!touched[fieldName]) return false;
+  const isSectionValid = (section: string) => {
+    // Valid formats: X-X, X-XX, XX-X, XX-XX
+    return /^(\d{1,2}-\d{1,2})$/.test(section);
+  };
 
+  const hasFieldError = (fieldName: string): boolean => {
     switch (fieldName) {
       case 'firstName':
       case 'lastName':
-        return !formData[fieldName as keyof typeof formData];
+        if (formData[fieldName as keyof typeof formData] === '') {
+          return !touched[fieldName] ? false : true;
+        }
+        return false;
       case 'email':
-        return !formData.email || !isEmailValid(formData.email);
+        if (formData.email === '') {
+          return !touched[fieldName] ? false : true;
+        }
+        return !isEmailValid(formData.email);
       case 'studentId':
-        return !formData.studentId || !isStudentIdValid(formData.studentId);
-      case 'course':
+        if (formData.studentId === '') {
+          return !touched[fieldName] ? false : true;
+        }
+        return !isStudentIdValid(formData.studentId);
       case 'section':
+        if (formData.section === '') {
+          return !touched[fieldName] ? false : true;
+        }
+        return !isSectionValid(formData.section);
+      case 'course':
       case 'yearLevel':
-        return !formData[fieldName as keyof typeof formData];
+        if (formData[fieldName as keyof typeof formData] === '') {
+          return !touched[fieldName] ? false : true;
+        }
+        return false;
       case 'password':
-        return !formData.password || !allRequirementsMet;
+        if (formData.password === '') {
+          return !touched[fieldName] ? false : true;
+        }
+        return !allRequirementsMet;
       case 'confirmPassword':
-        return !formData.confirmPassword || !passwordsMatch;
+        if (formData.confirmPassword === '') {
+          return !touched[fieldName] ? false : true;
+        }
+        return !passwordsMatch;
       default:
         return false;
     }
   };
 
   const getErrorMessage = (fieldName: string): string => {
-    if (!touched[fieldName]) return '';
-
     switch (fieldName) {
       case 'firstName':
+        if (!touched[fieldName] && !formData.firstName) return '';
         return !formData.firstName ? 'First name is required' : '';
       case 'lastName':
+        if (!touched[fieldName] && !formData.lastName) return '';
         return !formData.lastName ? 'Last name is required' : '';
       case 'email':
-        if (!formData.email) return 'Email is required';
+        if (!formData.email) return !touched[fieldName] ? '' : 'Email is required';
         if (!isEmailValid(formData.email)) return 'Email must end with @plv.edu.ph';
         return '';
       case 'studentId':
-        if (!formData.studentId) return 'Student ID is required';
+        if (!formData.studentId) return !touched[fieldName] ? '' : 'Student ID is required';
         if (!isStudentIdValid(formData.studentId)) return 'Format must be XX-XXXX (e.g., 23-3302)';
         return '';
       case 'course':
+        if (!touched[fieldName] && !formData.course) return '';
         return !formData.course ? 'Course selection is required' : '';
       case 'section':
-        return !formData.section ? 'Section selection is required' : '';
+        if (!formData.section) return !touched[fieldName] ? '' : 'Section is required';
+        if (!isSectionValid(formData.section)) return 'Format must be X-XX or XX-XX (e.g., 1-1 or 11-11)';
+        return '';
       case 'yearLevel':
+        if (!touched[fieldName] && !formData.yearLevel) return '';
         return !formData.yearLevel ? 'Year level selection is required' : '';
       case 'password':
-        if (!formData.password) return 'Password is required';
+        if (!formData.password) return !touched[fieldName] ? '' : 'Password is required';
         if (!allRequirementsMet) return 'Password does not meet all requirements';
         return '';
       case 'confirmPassword':
-        if (!formData.confirmPassword) return 'Please confirm your password';
+        if (!formData.confirmPassword) return !touched[fieldName] ? '' : 'Please confirm your password';
         if (!passwordsMatch) return 'Passwords do not match';
         return '';
       default:
@@ -159,6 +188,95 @@ export const SignUp: React.FC<SignUpProps> = ({ onSwitchToSignIn }) => {
   const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
     const { name, value } = e.target;
     setFormData(prev => ({ ...prev, [name]: value }));
+  };
+
+  const handleEmailChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    let input = e.target.value;
+    // Remove @plv.edu.ph if it exists to avoid duplicates
+    input = input.replace(/@plv\.edu\.ph/g, '');
+    // Store the full email with domain in formData
+    const fullEmail = input ? input + '@plv.edu.ph' : '';
+    setFormData(prev => ({ ...prev, email: fullEmail }));
+    
+    // Immediately set the value and cursor position
+    const emailInput = e.target as HTMLInputElement;
+    const cursorPos = input.length;
+    
+    // Use requestAnimationFrame to ensure DOM update before setting cursor
+    requestAnimationFrame(() => {
+      emailInput.value = fullEmail;
+      emailInput.setSelectionRange(cursorPos, cursorPos);
+    });
+  };
+
+  const handleSectionChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    let input = e.target.value;
+    // Remove multiple hyphens, keep only one
+    input = input.replace(/-+/g, '-');
+    
+    // Extract digits and check for hyphen position
+    let digits = input.replace(/\D/g, '').slice(0, 4); // up to 4 digits
+    let hasHyphen = input.includes('-');
+    
+    // Format based on what user typed
+    let formatted = '';
+    
+    if (hasHyphen) {
+      // User typed with hyphen, preserve the format they intended
+      const parts = input.split('-');
+      const firstPart = parts[0].replace(/\D/g, '');
+      const secondPart = parts[1] ? parts[1].replace(/\D/g, '') : '';
+      
+      // Keep up to 2 digits in each part
+      formatted = firstPart.slice(0, 2);
+      if (secondPart || input.endsWith('-')) {
+        formatted += '-' + secondPart.slice(0, 2);
+      }
+    } else {
+      // User typed without hyphen
+      if (digits.length === 1) {
+        formatted = digits;
+      } else if (digits.length === 2) {
+        formatted = digits;
+      } else if (digits.length === 3) {
+        formatted = digits.slice(0, 2) + '-' + digits.slice(2, 3);
+      } else if (digits.length === 4) {
+        formatted = digits.slice(0, 2) + '-' + digits.slice(2, 4);
+      }
+    }
+    
+    setFormData(prev => ({ ...prev, section: formatted }));
+    
+    // Set cursor position after the last character
+    setTimeout(() => {
+      const sectionInput = e.target as HTMLInputElement;
+      sectionInput.setSelectionRange(formatted.length, formatted.length);
+    }, 0);
+  };
+
+  const handleStudentIdChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    let input = e.target.value;
+    // Remove any non-digit characters
+    input = input.replace(/\D/g, '');
+    // Limit to 6 digits total (XX-XXXX format)
+    input = input.slice(0, 6);
+    
+    // Format as XX-XXXX
+    let formatted = '';
+    if (input.length > 0) {
+      formatted = input.slice(0, 2);
+      if (input.length > 2) {
+        formatted += '-' + input.slice(2, 6);
+      }
+    }
+    
+    setFormData(prev => ({ ...prev, studentId: formatted }));
+    
+    // Set cursor position after the last character
+    setTimeout(() => {
+      const studentIdInput = e.target as HTMLInputElement;
+      studentIdInput.setSelectionRange(formatted.length, formatted.length);
+    }, 0);
   };
 
   return (
@@ -227,17 +345,19 @@ export const SignUp: React.FC<SignUpProps> = ({ onSwitchToSignIn }) => {
 
               <div>
                 <label className="block text-gray-700 dark:text-gray-300 mb-2">Email (@plv.edu.ph only)</label>
-                <input
-                  type="email"
-                  name="email"
-                  value={formData.email}
-                  onChange={handleChange}
-                  onBlur={handleFieldBlur}
-                  className="w-full px-4 py-2 rounded-lg focus:ring-2 focus:ring-blue-500 dark:bg-gray-700 dark:text-white"
-                  style={{ border: hasFieldError('email') ? '1px solid #ef4444' : '1px solid #d1d5db' }}
-                  placeholder="your.name@plv.edu.ph"
-                  required
-                />
+                <div className="relative">
+                  <input
+                    type="text"
+                    name="email"
+                    value={formData.email}
+                    onChange={handleEmailChange}
+                    onBlur={handleFieldBlur}
+                    className="w-full px-4 py-2 rounded-lg focus:ring-2 focus:ring-blue-500 dark:bg-gray-700 dark:text-white"
+                    style={{ border: hasFieldError('email') ? '1px solid #ef4444' : '1px solid #d1d5db' }}
+                    placeholder="username@plv.edu.ph"
+                    required
+                  />
+                </div>
                 {hasFieldError('email') && (
                   <p style={{ color: '#ef4444' }} className="text-sm mt-1">{getErrorMessage('email')}</p>
                 )}
@@ -263,11 +383,12 @@ export const SignUp: React.FC<SignUpProps> = ({ onSwitchToSignIn }) => {
                   type="text"
                   name="studentId"
                   value={formData.studentId}
-                  onChange={handleChange}
+                  onChange={handleStudentIdChange}
                   onBlur={handleFieldBlur}
                   placeholder="23-3302"
                   className="w-full px-4 py-2 rounded-lg focus:ring-2 focus:ring-blue-500 dark:bg-gray-700 dark:text-white"
                   style={{ border: hasFieldError('studentId') ? '1px solid #ef4444' : '1px solid #d1d5db' }}
+                  maxLength={7}
                   required
                 />
                 {hasFieldError('studentId') && (
@@ -324,28 +445,19 @@ export const SignUp: React.FC<SignUpProps> = ({ onSwitchToSignIn }) => {
               </div>
 
               <div>
-                <label className="block text-gray-700 dark:text-gray-300 mb-2">Section</label>
-                <select
+                <label className="block text-gray-700 dark:text-gray-300 mb-2">Section (Format: XX-XX)</label>
+                <input
+                  type="text"
                   name="section"
                   value={formData.section}
-                  onChange={handleChange}
+                  onChange={handleSectionChange}
                   onBlur={handleFieldBlur}
+                  placeholder="1-1"
                   className="w-full px-4 py-2 rounded-lg focus:ring-2 focus:ring-blue-500 dark:bg-gray-700 dark:text-white"
                   style={{ border: hasFieldError('section') ? '1px solid #ef4444' : '1px solid #d1d5db' }}
+                  maxLength={5}
                   required
-                >
-                  <option value="">Select Section</option>
-                  <option value="1-1">1-1</option>
-                  <option value="1-2">1-2</option>
-                  <option value="1-3">1-3</option>
-                  <option value="1-4">1-4</option>
-                  <option value="1-5">1-5</option>
-                  <option value="2-1">2-1</option>
-                  <option value="2-2">2-2</option>
-                  <option value="2-3">2-3</option>
-                  <option value="2-4">2-4</option>
-                  <option value="2-5">2-5</option>
-                </select>
+                />
                 {hasFieldError('section') && (
                   <p style={{ color: '#ef4444' }} className="text-sm mt-1">{getErrorMessage('section')}</p>
                 )}
@@ -408,19 +520,19 @@ export const SignUp: React.FC<SignUpProps> = ({ onSwitchToSignIn }) => {
                 <div className="bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-lg p-3">
                   <p className="text-red-800 dark:text-red-300 mb-2">Password Requirements:</p>
                   <ul className="space-y-1 text-sm">
-                    <li className={passwordRequirements.minLength ? 'text-gray-600 dark:text-gray-400' : 'text-red-600 dark:text-red-400'}>
+                    <li className={passwordRequirements.minLength ? 'text-green-600 dark:text-green-400' : 'text-red-600 dark:text-red-400'}>
                       {passwordRequirements.minLength ? '✓' : '✗'} At least 8 characters
                     </li>
-                    <li className={passwordRequirements.hasUpperCase ? 'text-gray-600 dark:text-gray-400' : 'text-red-600 dark:text-red-400'}>
+                    <li className={passwordRequirements.hasUpperCase ? 'text-green-600 dark:text-green-400' : 'text-red-600 dark:text-red-400'}>
                       {passwordRequirements.hasUpperCase ? '✓' : '✗'} One uppercase letter
                     </li>
-                    <li className={passwordRequirements.hasLowerCase ? 'text-gray-600 dark:text-gray-400' : 'text-red-600 dark:text-red-400'}>
+                    <li className={passwordRequirements.hasLowerCase ? 'text-green-600 dark:text-green-400' : 'text-red-600 dark:text-red-400'}>
                       {passwordRequirements.hasLowerCase ? '✓' : '✗'} One lowercase letter
                     </li>
-                    <li className={passwordRequirements.hasNumber ? 'text-gray-600 dark:text-gray-400' : 'text-red-600 dark:text-red-400'}>
+                    <li className={passwordRequirements.hasNumber ? 'text-green-600 dark:text-green-400' : 'text-red-600 dark:text-red-400'}>
                       {passwordRequirements.hasNumber ? '✓' : '✗'} One number
                     </li>
-                    <li className={passwordRequirements.hasSpecial ? 'text-gray-600 dark:text-gray-400' : 'text-red-600 dark:text-red-400'}>
+                    <li className={passwordRequirements.hasSpecial ? 'text-green-600 dark:text-green-400' : 'text-red-600 dark:text-red-400'}>
                       {passwordRequirements.hasSpecial ? '✓' : '✗'} One special character
                     </li>
                   </ul>
