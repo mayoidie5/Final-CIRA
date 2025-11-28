@@ -55,15 +55,32 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         return;
       }
 
-      // Block access if email is not verified
-      if (!fbUser.emailVerified) {
-        setUser(null);
-        localStorage.removeItem('currentUser');
-        return;
-      }
-
       try {
+        // Reload to get the latest emailVerified status
+        await fbUser.reload();
+        
         const userDoc = await getDoc(doc(db, 'users', fbUser.uid));
+        
+        // Check if user is verified either by email or by Firestore isVerified flag (admin bypass)
+        const isFirestoreVerified = userDoc.exists() && userDoc.data()?.isVerified;
+        const isEmailVerified = fbUser.emailVerified;
+        const isVerified = isEmailVerified || isFirestoreVerified;
+        
+        // Block access if neither email verified nor firestore isVerified flag set
+        if (!isVerified) {
+          setUser(null);
+          localStorage.removeItem('currentUser');
+          return;
+        }
+
+        // Update Firestore with latest emailVerified status if email just got verified
+        if (isEmailVerified && userDoc.exists()) {
+          const currentData = userDoc.data();
+          if (!currentData?.isVerified) {
+            await updateDoc(doc(db, 'users', fbUser.uid), { isVerified: true });
+          }
+        }
+
         if (userDoc.exists()) {
           const u = mapFirestoreToUser(fbUser.uid, userDoc.data());
           setUser(u);
@@ -99,7 +116,21 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       // Reload user to get latest emailVerified status from Firebase
       await cred.user.reload();
       
-      if (!cred.user.emailVerified) {
+      // Check if user is verified either by email or by Firestore isVerified flag (admin bypass)
+      const isEmailVerified = cred.user.emailVerified;
+      
+      // Check Firestore for isVerified flag (admin bypass)
+      let isFirestoreVerified = false;
+      try {
+        const userDoc = await getDoc(doc(db, 'users', cred.user.uid));
+        isFirestoreVerified = userDoc.exists() && userDoc.data()?.isVerified === true;
+      } catch (err) {
+        console.error('Error checking Firestore isVerified:', err);
+      }
+      
+      const isVerified = isEmailVerified || isFirestoreVerified;
+      
+      if (!isVerified) {
         return { success: false, needsVerification: true, error: 'Email not verified' };
       }
       return { success: true };
