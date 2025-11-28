@@ -700,7 +700,7 @@ export const FormEditor: React.FC = () => {
                 : 'text-gray-600 dark:text-gray-400 hover:text-gray-800 dark:hover:text-gray-300'
             }`}
           >
-            Form Configuration
+            <span className="block px-4 py-3">Form Configuration</span>
           </button>
           <button
             onClick={() => setActiveTab('preview')}
@@ -710,7 +710,7 @@ export const FormEditor: React.FC = () => {
                 : 'text-gray-600 dark:text-gray-400 hover:text-gray-800 dark:hover:text-gray-300'
             }`}
           >
-            Form Preview
+            <span className="block px-4 py-3">Form Preview</span>
           </button>
         </div>
 
