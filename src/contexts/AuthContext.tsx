@@ -95,6 +95,10 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const login = async (email: string, password: string) => {
     try {
       const cred = await signInWithEmailAndPassword(auth, email, password);
+      
+      // Reload user to get latest emailVerified status from Firebase
+      await cred.user.reload();
+      
       if (!cred.user.emailVerified) {
         return { success: false, needsVerification: true, error: 'Email not verified' };
       }
