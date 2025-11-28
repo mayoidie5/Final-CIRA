@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Eye, EyeOff, AlertCircle, CheckCircle } from 'lucide-react';
+import { Eye, EyeOff, AlertCircle, CheckCircle, Moon, Sun } from 'lucide-react';
 import { useAuth } from '../contexts/AuthContext';
 import { UserRole } from '../types';
 import navyLogo from '../assets/MainLogoNavyBlue.png';
@@ -49,6 +49,7 @@ export const SignUp: React.FC<SignUpProps> = ({ onSwitchToSignIn }) => {
   const [error, setError] = useState('');
   const [success, setSuccess] = useState(false);
   const [loading, setLoading] = useState(false);
+  const [touched, setTouched] = useState<Record<string, boolean>>({});
 
   // Password validation
   const passwordRequirements = {
@@ -61,6 +62,79 @@ export const SignUp: React.FC<SignUpProps> = ({ onSwitchToSignIn }) => {
 
   const allRequirementsMet = Object.values(passwordRequirements).every(req => req);
   const passwordsMatch = formData.password && formData.confirmPassword && formData.password === formData.confirmPassword;
+
+  // Validation functions
+  const isEmailValid = (email: string) => {
+    return email.endsWith('@plv.edu.ph');
+  };
+
+  const isStudentIdValid = (id: string) => {
+    return /^\d{2}-\d{4}$/.test(id);
+  };
+
+  const hasFieldError = (fieldName: string): boolean => {
+    if (!touched[fieldName]) return false;
+
+    switch (fieldName) {
+      case 'firstName':
+      case 'lastName':
+        return !formData[fieldName as keyof typeof formData];
+      case 'email':
+        return !formData.email || !isEmailValid(formData.email);
+      case 'studentId':
+        return !formData.studentId || !isStudentIdValid(formData.studentId);
+      case 'course':
+      case 'section':
+      case 'yearLevel':
+        return !formData[fieldName as keyof typeof formData];
+      case 'password':
+        return !formData.password || !allRequirementsMet;
+      case 'confirmPassword':
+        return !formData.confirmPassword || !passwordsMatch;
+      default:
+        return false;
+    }
+  };
+
+  const getErrorMessage = (fieldName: string): string => {
+    if (!touched[fieldName]) return '';
+
+    switch (fieldName) {
+      case 'firstName':
+        return !formData.firstName ? 'First name is required' : '';
+      case 'lastName':
+        return !formData.lastName ? 'Last name is required' : '';
+      case 'email':
+        if (!formData.email) return 'Email is required';
+        if (!isEmailValid(formData.email)) return 'Email must end with @plv.edu.ph';
+        return '';
+      case 'studentId':
+        if (!formData.studentId) return 'Student ID is required';
+        if (!isStudentIdValid(formData.studentId)) return 'Format must be XX-XXXX (e.g., 23-3302)';
+        return '';
+      case 'course':
+        return !formData.course ? 'Course selection is required' : '';
+      case 'section':
+        return !formData.section ? 'Section selection is required' : '';
+      case 'yearLevel':
+        return !formData.yearLevel ? 'Year level selection is required' : '';
+      case 'password':
+        if (!formData.password) return 'Password is required';
+        if (!allRequirementsMet) return 'Password does not meet all requirements';
+        return '';
+      case 'confirmPassword':
+        if (!formData.confirmPassword) return 'Please confirm your password';
+        if (!passwordsMatch) return 'Passwords do not match';
+        return '';
+      default:
+        return '';
+    }
+  };
+
+  const handleFieldBlur = (e: React.FocusEvent<HTMLInputElement | HTMLSelectElement>) => {
+    const { name } = e.target;
+    setTouched(prev => ({ ...prev, [name]: true }));
+  };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -92,7 +166,14 @@ export const SignUp: React.FC<SignUpProps> = ({ onSwitchToSignIn }) => {
       <div className="w-full max-w-md">
         <div className="bg-white dark:bg-gray-800 rounded-lg shadow-xl overflow-hidden">
           {/* Logo Section */}
-          <div className="p-8 text-center">
+          <div className="p-8 text-center relative">
+            <button
+              onClick={toggleTheme}
+              className="absolute top-4 right-4 p-2 rounded-lg bg-gray-200 dark:bg-gray-700 hover:bg-gray-300 dark:hover:bg-gray-600 transition-colors"
+              title="Toggle theme"
+            >
+              {isDark ? <Sun size={20} className="text-yellow-500" /> : <Moon size={20} className="text-gray-700" />}
+            </button>
             <img
               src={isDark ? whiteLogo : navyLogo}
               alt="CIRA logo"
@@ -117,9 +198,14 @@ export const SignUp: React.FC<SignUpProps> = ({ onSwitchToSignIn }) => {
                     name="firstName"
                     value={formData.firstName}
                     onChange={handleChange}
-                    className="w-full px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 dark:bg-gray-700 dark:text-white"
+                    onBlur={handleFieldBlur}
+                    className="w-full px-4 py-2 rounded-lg focus:ring-2 focus:ring-blue-500 dark:bg-gray-700 dark:text-white"
+                    style={{ border: hasFieldError('firstName') ? '1px solid #ef4444' : '1px solid #d1d5db' }}
                     required
                   />
+                  {hasFieldError('firstName') && (
+                    <p style={{ color: '#ef4444' }} className="text-sm mt-1">{getErrorMessage('firstName')}</p>
+                  )}
                 </div>
                 <div>
                   <label className="block text-gray-700 dark:text-gray-300 mb-2">Last Name</label>
@@ -128,9 +214,14 @@ export const SignUp: React.FC<SignUpProps> = ({ onSwitchToSignIn }) => {
                     name="lastName"
                     value={formData.lastName}
                     onChange={handleChange}
-                    className="w-full px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 dark:bg-gray-700 dark:text-white"
+                    onBlur={handleFieldBlur}
+                    className="w-full px-4 py-2 rounded-lg focus:ring-2 focus:ring-blue-500 dark:bg-gray-700 dark:text-white"
+                    style={{ border: hasFieldError('lastName') ? '1px solid #ef4444' : '1px solid #d1d5db' }}
                     required
                   />
+                  {hasFieldError('lastName') && (
+                    <p style={{ color: '#ef4444' }} className="text-sm mt-1">{getErrorMessage('lastName')}</p>
+                  )}
                 </div>
               </div>
 
@@ -141,10 +232,15 @@ export const SignUp: React.FC<SignUpProps> = ({ onSwitchToSignIn }) => {
                   name="email"
                   value={formData.email}
                   onChange={handleChange}
-                  className="w-full px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 dark:bg-gray-700 dark:text-white"
+                  onBlur={handleFieldBlur}
+                  className="w-full px-4 py-2 rounded-lg focus:ring-2 focus:ring-blue-500 dark:bg-gray-700 dark:text-white"
+                  style={{ border: hasFieldError('email') ? '1px solid #ef4444' : '1px solid #d1d5db' }}
                   placeholder="your.name@plv.edu.ph"
                   required
                 />
+                {hasFieldError('email') && (
+                  <p style={{ color: '#ef4444' }} className="text-sm mt-1">{getErrorMessage('email')}</p>
+                )}
               </div>
 
               <div>
@@ -168,10 +264,15 @@ export const SignUp: React.FC<SignUpProps> = ({ onSwitchToSignIn }) => {
                   name="studentId"
                   value={formData.studentId}
                   onChange={handleChange}
+                  onBlur={handleFieldBlur}
                   placeholder="23-3302"
-                  className="w-full px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 dark:bg-gray-700 dark:text-white"
+                  className="w-full px-4 py-2 rounded-lg focus:ring-2 focus:ring-blue-500 dark:bg-gray-700 dark:text-white"
+                  style={{ border: hasFieldError('studentId') ? '1px solid #ef4444' : '1px solid #d1d5db' }}
                   required
                 />
+                {hasFieldError('studentId') && (
+                  <p style={{ color: '#ef4444' }} className="text-sm mt-1">{getErrorMessage('studentId')}</p>
+                )}
               </div>
 
               <div className="grid grid-cols-2 gap-4">
@@ -181,7 +282,9 @@ export const SignUp: React.FC<SignUpProps> = ({ onSwitchToSignIn }) => {
                     name="course"
                     value={formData.course}
                     onChange={handleChange}
-                    className="w-full px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 dark:bg-gray-700 dark:text-white"
+                    onBlur={handleFieldBlur}
+                    className="w-full px-4 py-2 rounded-lg focus:ring-2 focus:ring-blue-500 dark:bg-gray-700 dark:text-white"
+                    style={{ border: hasFieldError('course') ? '1px solid #ef4444' : '1px solid #d1d5db' }}
                     required
                   >
                     <option value="">Select Course</option>
@@ -193,6 +296,9 @@ export const SignUp: React.FC<SignUpProps> = ({ onSwitchToSignIn }) => {
                     <option value="BSED">BSED</option>
                     <option value="BEED">BEED</option>
                   </select>
+                  {hasFieldError('course') && (
+                    <p style={{ color: '#ef4444' }} className="text-sm mt-1">{getErrorMessage('course')}</p>
+                  )}
                 </div>
                 <div>
                   <label className="block text-gray-700 dark:text-gray-300 mb-2">Year Level</label>
@@ -200,7 +306,9 @@ export const SignUp: React.FC<SignUpProps> = ({ onSwitchToSignIn }) => {
                     name="yearLevel"
                     value={formData.yearLevel}
                     onChange={handleChange}
-                    className="w-full px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 dark:bg-gray-700 dark:text-white"
+                    onBlur={handleFieldBlur}
+                    className="w-full px-4 py-2 rounded-lg focus:ring-2 focus:ring-blue-500 dark:bg-gray-700 dark:text-white"
+                    style={{ border: hasFieldError('yearLevel') ? '1px solid #ef4444' : '1px solid #d1d5db' }}
                     required
                   >
                     <option value="">Select Year</option>
@@ -209,6 +317,9 @@ export const SignUp: React.FC<SignUpProps> = ({ onSwitchToSignIn }) => {
                     <option value="3rd Year">3rd Year</option>
                     <option value="4th Year">4th Year</option>
                   </select>
+                  {hasFieldError('yearLevel') && (
+                    <p style={{ color: '#ef4444' }} className="text-sm mt-1">{getErrorMessage('yearLevel')}</p>
+                  )}
                 </div>
               </div>
 
@@ -218,7 +329,9 @@ export const SignUp: React.FC<SignUpProps> = ({ onSwitchToSignIn }) => {
                   name="section"
                   value={formData.section}
                   onChange={handleChange}
-                  className="w-full px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 dark:bg-gray-700 dark:text-white"
+                  onBlur={handleFieldBlur}
+                  className="w-full px-4 py-2 rounded-lg focus:ring-2 focus:ring-blue-500 dark:bg-gray-700 dark:text-white"
+                  style={{ border: hasFieldError('section') ? '1px solid #ef4444' : '1px solid #d1d5db' }}
                   required
                 >
                   <option value="">Select Section</option>
@@ -233,6 +346,9 @@ export const SignUp: React.FC<SignUpProps> = ({ onSwitchToSignIn }) => {
                   <option value="2-4">2-4</option>
                   <option value="2-5">2-5</option>
                 </select>
+                {hasFieldError('section') && (
+                  <p style={{ color: '#ef4444' }} className="text-sm mt-1">{getErrorMessage('section')}</p>
+                )}
               </div>
 
               <div>
@@ -243,7 +359,9 @@ export const SignUp: React.FC<SignUpProps> = ({ onSwitchToSignIn }) => {
                     name="password"
                     value={formData.password}
                     onChange={handleChange}
-                    className="w-full px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 dark:bg-gray-700 dark:text-white pr-10"
+                    onBlur={handleFieldBlur}
+                    className="w-full px-4 py-2 rounded-lg focus:ring-2 focus:ring-blue-500 dark:bg-gray-700 dark:text-white pr-10"
+                    style={{ border: hasFieldError('password') ? '1px solid #ef4444' : '1px solid #d1d5db' }}
                     required
                   />
                   <button
@@ -254,6 +372,9 @@ export const SignUp: React.FC<SignUpProps> = ({ onSwitchToSignIn }) => {
                     {showPassword ? <EyeOff size={20} /> : <Eye size={20} />}
                   </button>
                 </div>
+                {hasFieldError('password') && (
+                  <p style={{ color: '#ef4444' }} className="text-sm mt-1">{getErrorMessage('password')}</p>
+                )}
               </div>
 
               <div>
@@ -264,7 +385,9 @@ export const SignUp: React.FC<SignUpProps> = ({ onSwitchToSignIn }) => {
                     name="confirmPassword"
                     value={formData.confirmPassword}
                     onChange={handleChange}
-                    className="w-full px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 dark:bg-gray-700 dark:text-white pr-10"
+                    onBlur={handleFieldBlur}
+                    className="w-full px-4 py-2 rounded-lg focus:ring-2 focus:ring-blue-500 dark:bg-gray-700 dark:text-white pr-10"
+                    style={{ border: hasFieldError('confirmPassword') ? '1px solid #ef4444' : '1px solid #d1d5db' }}
                     required
                   />
                   <button
@@ -275,6 +398,9 @@ export const SignUp: React.FC<SignUpProps> = ({ onSwitchToSignIn }) => {
                     {showConfirmPassword ? <EyeOff size={20} /> : <Eye size={20} />}
                   </button>
                 </div>
+                {hasFieldError('confirmPassword') && (
+                  <p style={{ color: '#ef4444' }} className="text-sm mt-1">{getErrorMessage('confirmPassword')}</p>
+                )}
               </div>
 
               {/* Password Requirements */}
