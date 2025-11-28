@@ -340,6 +340,7 @@ export const SignIn: React.FC<SignInProps> = ({ onSwitchToSignUp, onSignInSucces
           </div>
         </div>
       )}
+
     </div>
   );
 };
