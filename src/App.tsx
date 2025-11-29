@@ -24,19 +24,10 @@ const AppContent: React.FC = () => {
   const [showTutorial, setShowTutorial] = useState(false);
   const [sidebarOpen, setSidebarOpen] = useState(true);
 
-  // Initialize localStorage with mock data on first load
+  // Initialize localStorage with required data on first load
   useEffect(() => {
-    if (!localStorage.getItem('users')) {
-      localStorage.setItem('users', JSON.stringify(MOCK_USERS));
-    }
-    if (!localStorage.getItem('passwords')) {
-      localStorage.setItem('passwords', JSON.stringify(MOCK_PASSWORDS));
-    }
     if (!localStorage.getItem('formConfig')) {
       localStorage.setItem('formConfig', JSON.stringify(DEFAULT_FORM_CONFIG));
-    }
-    if (!localStorage.getItem('tickets')) {
-      localStorage.setItem('tickets', JSON.stringify(SAMPLE_TICKETS));
     }
     if (!localStorage.getItem('notifications')) {
       localStorage.setItem('notifications', JSON.stringify([]));

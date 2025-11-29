@@ -135,15 +135,6 @@ export const SignIn: React.FC<SignInProps> = ({ onSwitchToSignUp, onSignInSucces
               </button>
             </p>
           </div>
-
-          <div className="mt-6 p-4 bg-gray-50 dark:bg-gray-700 rounded-lg">
-            <p className="text-gray-600 dark:text-gray-400 mb-2">Demo Accounts:</p>
-            <div className="space-y-1">
-              <p className="text-gray-700 dark:text-gray-300">Admin: Admin@plv.edu.ph / @Admin123</p>
-              <p className="text-gray-700 dark:text-gray-300">Class Rep: mj@plv.edu.ph / @Admin123</p>
-              <p className="text-gray-700 dark:text-gray-300">Student: rob@plv.edu.ph / @Admin123</p>
-            </div>
-          </div>
         </div>
       </div>
     </div>
