@@ -1,6 +1,9 @@
 import React, { useState } from 'react';
-import { Eye, EyeOff, AlertCircle } from 'lucide-react';
+import { Eye, EyeOff, AlertCircle, Moon, Sun } from 'lucide-react';
 import { useAuth } from '../contexts/AuthContext';
+import { useTheme } from '../contexts/ThemeContext';
+import logoNavyBlue from '../../assets/MainLogoNavyBlue.png';
+import logoWhite from '../../assets/MainLogoWhite.png';
 
 interface SignInProps {
   onSwitchToSignUp: () => void;
@@ -9,12 +12,15 @@ interface SignInProps {
 
 export const SignIn: React.FC<SignInProps> = ({ onSwitchToSignUp, onSignInSuccess }) => {
   const { login, resendVerification } = useAuth();
+  const { theme, setTheme } = useTheme();
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
   const [error, setError] = useState('');
   const [needsVerification, setNeedsVerification] = useState(false);
   const [loading, setLoading] = useState(false);
+
+  const isDark = theme === 'dark';
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -42,15 +48,37 @@ export const SignIn: React.FC<SignInProps> = ({ onSwitchToSignUp, onSignInSucces
 
   return (
     <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-blue-50 to-indigo-100 dark:from-gray-900 dark:to-gray-800 p-4">
+      <button
+        onClick={() => theme === 'light' ? setTheme('dark') : setTheme('light')}
+        className="fixed top-4 right-4 p-2 rounded-lg bg-gray-200 dark:bg-gray-700 hover:bg-gray-300 dark:hover:bg-gray-600 transition-colors"
+        aria-label="Toggle theme"
+      >
+        {theme === 'light' ? (
+          <Moon size={20} className="text-gray-800" />
+        ) : (
+          <Sun size={20} className="text-yellow-400" />
+        )}
+      </button>
       <div className="w-full max-w-md">
         <div className="bg-white dark:bg-gray-800 rounded-lg shadow-xl p-6 sm:p-8">
-          <div className="text-center mb-6 sm:mb-8">
-            <h1 className="text-blue-600 dark:text-blue-400 mb-2 text-xl sm:text-2xl">Comlab Issue Reporting Application</h1>
-            <h2 className="text-gray-600 dark:text-gray-400 text-lg sm:text-xl">Sign In</h2>
-            <p className="text-gray-500 dark:text-gray-400 mt-2 text-sm sm:text-base">College of Engineering Information Technology</p>
+          {/* Section 1: Logo and Title */}
+          <div className="text-center mb-8 pb-8 border-b-2 border-gray-300 dark:border-gray-600">
+            <img
+              src={isDark ? logoWhite : logoNavyBlue}
+              alt="Logo"
+              className="w-auto mx-auto mb-4"
+              style={{ height: '150px' }}
+            />
+            <h1 className="text-blue-600 dark:text-blue-400 text-xl sm:text-2xl">Comlab Issue Reporting Application</h1>
           </div>
 
-          <form onSubmit={handleSubmit} className="space-y-4">
+          {/* Horizontal Line */}
+          <hr className="my-8 border-gray-300 dark:border-gray-600" />
+
+          {/* Section 2: Sign In Form */}
+          <div className="mb-8 pb-8 border-b-2 border-gray-300 dark:border-gray-600">
+            {/* Form Section */}
+            <form onSubmit={handleSubmit} className="space-y-4" style={{ marginTop: '2rem' }}>
             <div>
               <label className="block text-gray-700 dark:text-gray-300 mb-2">Email</label>
               <input
@@ -124,6 +152,7 @@ export const SignIn: React.FC<SignInProps> = ({ onSwitchToSignUp, onSignInSucces
             </button>
           </form>
 
+          {/* Sign In Toggle */}
           <div className="mt-6 text-center">
             <p className="text-gray-600 dark:text-gray-400">
               Don't have an account?{' '}
@@ -134,6 +163,15 @@ export const SignIn: React.FC<SignInProps> = ({ onSwitchToSignUp, onSignInSucces
                 Sign Up
               </button>
             </p>
+          </div>
+          </div>
+
+          {/* Horizontal Line */}
+          <hr className="my-8 border-gray-300 dark:border-gray-600" />
+
+          {/* Section 3: Footer */}
+          <div className="text-center">
+            <p className="text-gray-500 dark:text-gray-400 text-sm text-center">College of Engineering Information Technology</p>
           </div>
         </div>
       </div>
