@@ -131,7 +131,7 @@ const AppContent: React.FC = () => {
         <aside
           className={`${
             sidebarOpen ? 'translate-x-0' : '-translate-x-full'
-          } lg:translate-x-0 fixed lg:sticky top-16 h-[calc(100vh-4rem)] w-64 bg-white dark:bg-gray-800 border-r border-gray-200 dark:border-gray-700 transition-transform z-40 overflow-y-auto`}
+          } lg:translate-x-0 fixed lg:sticky top-16 h-[calc(100vh-4rem)] w-64 bg-white dark:bg-gray-800 border-r border-gray-200 dark:border-gray-700 transition-transform z-30 overflow-y-auto`}
         >
           <nav className="p-4 space-y-2">
             {navItems.map(item => {

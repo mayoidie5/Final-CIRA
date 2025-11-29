@@ -669,26 +669,6 @@ export const FormEditor: React.FC = () => {
             </div>
           )}
 
-          {/* Debug Info Section */}
-          <div className="bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-lg p-4">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-sm text-blue-900 dark:text-blue-200">
-                  <strong>Logged in as:</strong> {user?.email} <br />
-                  <strong>Role:</strong> {user?.role} <strong>ID:</strong> {user?.id}
-                </p>
-              </div>
-              {user?.role !== 'admin' && (
-                <button
-                  onClick={setupAdminRole}
-                  className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg text-sm transition-colors"
-                >
-                  Set as Admin
-                </button>
-              )}
-            </div>
-          </div>
-
           {/* Tabs Section */}
       <div className="bg-white dark:bg-gray-800 rounded-lg shadow border border-gray-200 dark:border-gray-700 overflow-hidden">
         <div className="flex border-b border-gray-200 dark:border-gray-700">
