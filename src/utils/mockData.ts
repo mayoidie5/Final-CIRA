@@ -1,47 +1,6 @@
 import { User, FormConfig } from '../types';
 
 export const MOCK_USERS: User[] = [
-  {
-    id: '1',
-    firstName: 'Admin',
-    lastName: 'User',
-    email: 'Admin@plv.edu.ph',
-    role: 'admin',
-    department: 'College of Engineering Information Technology',
-    isVerified: true,
-    theme: 'system',
-    createdAt: new Date().toISOString(),
-  },
-  {
-    id: '2',
-    firstName: 'MJ',
-    lastName: 'Santos',
-    email: 'mj@plv.edu.ph',
-    role: 'class_rep',
-    studentId: '22-1234',
-    course: 'BSIT',
-    section: '2-1',
-    yearLevel: '3rd Year',
-    department: 'College of Engineering Information Technology',
-    isVerified: true,
-    theme: 'system',
-    createdAt: new Date().toISOString(),
-  },
-  {
-    id: '3',
-    firstName: 'Rob',
-    lastName: 'Cruz',
-    email: 'rob@plv.edu.ph',
-    role: 'student',
-    studentId: '23-3302',
-    course: 'BSIT',
-    section: '1-3',
-    yearLevel: '2nd Year',
-    department: 'College of Engineering Information Technology',
-    isVerified: true,
-    theme: 'system',
-    createdAt: new Date().toISOString(),
-  },
 ];
 
 export const DEFAULT_FORM_CONFIG: FormConfig = {
@@ -154,8 +113,4 @@ export const DEFAULT_FORM_CONFIG: FormConfig = {
   ],
 };
 
-export const MOCK_PASSWORDS: Record<string, string> = {
-  'Admin@plv.edu.ph': '@Admin123',
-  'mj@plv.edu.ph': '@Admin123',
-  'rob@plv.edu.ph': '@Admin123',
-};
+export const MOCK_PASSWORDS: Record<string, string> = {};
