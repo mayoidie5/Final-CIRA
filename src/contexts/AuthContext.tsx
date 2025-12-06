@@ -23,7 +23,15 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
   useEffect(() => {
     // Initialize admin account on first load
-    initializeAdminAccount();
+    const init = async () => {
+      try {
+        await initializeAdminAccount();
+      } catch (error) {
+        console.error('⚠️ Failed to initialize admin account:', error);
+      }
+    };
+    
+    init();
 
     const storedUser = localStorage.getItem('currentUser');
     if (storedUser) {
@@ -34,36 +42,45 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const login = async (email: string, password: string) => {
     try {
       // Authenticate with Firebase
-      const userCredential = await signInWithEmailAndPassword(auth, email, password);
-      const firebaseUser = userCredential.user;
+      let userCredential = await signInWithEmailAndPassword(auth, email, password);
+      let firebaseUser = userCredential.user;
 
       // Get user data from Firestore
-      const userDoc = await getDoc(doc(db, 'users', firebaseUser.uid));
+      let userDoc = await getDoc(doc(db, 'users', firebaseUser.uid));
       
       if (!userDoc.exists()) {
+        // If this is the admin account and user data doesn't exist, create it
+        if (email === 'admin@plv.edu.ph') {
+          console.log('📝 Creating admin user document in Firestore...');
+          const adminUser: User = {
+            id: firebaseUser.uid,
+            firstName: 'Admin',
+            lastName: 'Account',
+            email: 'admin@plv.edu.ph',
+            role: 'admin',
+            department: 'College of Engineering Information Technology',
+            isVerified: true,
+            isPending: false,
+            theme: 'system',
+            createdAt: new Date().toISOString(),
+          };
+          await setDoc(doc(db, 'users', firebaseUser.uid), adminUser);
+          console.log('✅ Admin user document created');
+          setUser(adminUser);
+          localStorage.setItem('currentUser', JSON.stringify(adminUser));
+          return { success: true };
+        }
         return { success: false, error: 'User data not found' };
       }
 
       let foundUser = userDoc.data() as User;
 
-      // Check if email was verified via the verification link
-      const verificationTokens = JSON.parse(localStorage.getItem('verificationTokens') || '{}');
-      const emailVerified = !verificationTokens[email]; // If no token exists, email was verified
-
-      if (emailVerified && !foundUser.isVerified) {
-        // User verified their email but Firestore wasn't updated
-        foundUser.isVerified = true;
-        console.log('📝 Email verified detected, updating Firestore');
-        try {
-          await updateDoc(doc(db, 'users', firebaseUser.uid), { isVerified: true });
-          console.log('✅ Firestore updated with verified status');
-        } catch (updateError) {
-          console.warn('⚠️ Could not update Firestore, but proceeding with login');
-        }
-      }
-
+      // CHECK FIRESTORE FOR VERIFICATION STATUS - THIS IS THE SOURCE OF TRUTH
+      // Users cannot bypass this by clearing localStorage
       if (!foundUser.isVerified) {
-        return { success: false, needsVerification: true, error: 'Email not verified' };
+        console.log('📧 Email verification required for:', email);
+        console.log('   isVerified in Firestore:', foundUser.isVerified);
+        return { success: false, needsVerification: true, error: 'Email not verified. Please check your inbox for the verification link.' };
       }
 
       setUser(foundUser);
