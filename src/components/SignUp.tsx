@@ -21,7 +21,6 @@ export const SignUp: React.FC<SignUpProps> = ({ onSwitchToSignIn }) => {
     studentId: '',
     course: '',
     section: '',
-    yearLevel: '',
     password: '',
     confirmPassword: '',
   });
@@ -51,7 +50,11 @@ export const SignUp: React.FC<SignUpProps> = ({ onSwitchToSignIn }) => {
     setSuccess(false);
     setLoading(true);
 
-    const result = await signup(formData);
+    // Auto-append @plv.edu.ph to email if not already present
+    const emailToSubmit = formData.email.includes('@') ? formData.email : `${formData.email}@plv.edu.ph`;
+    const submitData = { ...formData, email: emailToSubmit };
+
+    const result = await signup(submitData);
     setLoading(false);
 
     if (result.success) {
@@ -68,6 +71,107 @@ export const SignUp: React.FC<SignUpProps> = ({ onSwitchToSignIn }) => {
   const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
     const { name, value } = e.target;
     setFormData(prev => ({ ...prev, [name]: value }));
+  };
+
+  const handleEmailChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    let value = e.target.value.trim();
+    
+    // Remove @plv.edu.ph if it exists to prevent duplication
+    if (value.endsWith('@plv.edu.ph')) {
+      value = value.replace('@plv.edu.ph', '');
+    }
+    
+    setFormData(prev => ({ ...prev, email: value }));
+  };
+
+  const handleEmailBlur = () => {
+    if (formData.email && !formData.email.includes('@')) {
+      setFormData(prev => ({ ...prev, email: `${prev.email}@plv.edu.ph` }));
+    }
+  };
+
+  const handleStudentIdChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    let value = e.target.value;
+    
+    // Remove all characters except digits and dashes
+    value = value.replace(/[^\d-]/g, '');
+    
+    // Extract digits
+    const digits = value.replace(/\D/g, '');
+    
+    // Enforce max 6 digits
+    if (digits.length > 6) {
+      value = value.slice(0, value.length - (digits.length - 6));
+    }
+    
+    // Find dash position
+    const dashIndex = value.indexOf('-');
+    
+    // If dash exists, enforce exactly 2 digits before and max 4 after
+    if (dashIndex !== -1) {
+      const beforeDash = value.slice(0, dashIndex).replace(/\D/g, '');
+      const afterDash = value.slice(dashIndex + 1).replace(/\D/g, '');
+      
+      // Enforce 2 digits before dash, 4 digits after
+      const finalBeforeDash = beforeDash.slice(0, 2);
+      const finalAfterDash = afterDash.slice(0, 4);
+      
+      // Only show dash if we have digits
+      if (finalBeforeDash.length === 2) {
+        value = finalBeforeDash + '-' + finalAfterDash;
+      } else {
+        value = finalBeforeDash + finalAfterDash;
+      }
+    } else {
+      // No dash yet - auto-add after 2 digits
+      if (digits.length > 2) {
+        value = digits.slice(0, 2) + '-' + digits.slice(2);
+      }
+    }
+    
+    setFormData(prev => ({ ...prev, studentId: value }));
+  };
+
+  const handleYearSectionChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    let value = e.target.value;
+    
+    // Remove all characters except digits and dashes
+    value = value.replace(/[^\d-]/g, '');
+    
+    // Extract digits
+    const digits = value.replace(/\D/g, '');
+    
+    // Enforce max 3 digits total
+    if (digits.length > 3) {
+      value = value.slice(0, value.length - (digits.length - 3));
+    }
+    
+    // Find dash position
+    const dashIndex = value.indexOf('-');
+    
+    // If dash exists, enforce exactly 1 digit before and max 2 after
+    if (dashIndex !== -1) {
+      const beforeDash = value.slice(0, dashIndex).replace(/\D/g, '');
+      const afterDash = value.slice(dashIndex + 1).replace(/\D/g, '');
+      
+      // Enforce 1 digit before dash, max 2 after
+      const finalBeforeDash = beforeDash.slice(0, 1);
+      const finalAfterDash = afterDash.slice(0, 2);
+      
+      // Only show dash if we have 1 digit before
+      if (finalBeforeDash.length === 1) {
+        value = finalBeforeDash + '-' + finalAfterDash;
+      } else {
+        value = finalBeforeDash + finalAfterDash;
+      }
+    } else {
+      // No dash yet - auto-add after 1 digit
+      if (digits.length > 1) {
+        value = digits.slice(0, 1) + '-' + digits.slice(1);
+      }
+    }
+    
+    setFormData(prev => ({ ...prev, section: value }));
   };
 
   return (
@@ -130,15 +234,22 @@ export const SignUp: React.FC<SignUpProps> = ({ onSwitchToSignIn }) => {
 
             <div>
               <label className="block text-gray-700 dark:text-gray-300 mb-2">Email (@plv.edu.ph only)</label>
-              <input
-                type="email"
-                name="email"
-                value={formData.email}
-                onChange={handleChange}
-                className="w-full px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 dark:bg-gray-700 dark:text-white"
-                placeholder="your.name@plv.edu.ph"
-                required
-              />
+              <div className="relative">
+                <input
+                  type="text"
+                  name="email"
+                  value={formData.email}
+                  onChange={handleEmailChange}
+                  onBlur={handleEmailBlur}
+                  className="w-full px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 dark:bg-gray-700 dark:text-white"
+                  placeholder="your.name"
+                  required
+                  autoComplete="email"
+                />
+                <span className="absolute right-4 top-1/2 -translate-y-1/2 text-gray-500 dark:text-gray-400 pointer-events-none">
+                  @plv.edu.ph
+                </span>
+              </div>
             </div>
 
             <div>
@@ -161,8 +272,9 @@ export const SignUp: React.FC<SignUpProps> = ({ onSwitchToSignIn }) => {
                 type="text"
                 name="studentId"
                 value={formData.studentId}
-                onChange={handleChange}
+                onChange={handleStudentIdChange}
                 placeholder="23-3302"
+                maxLength="7"
                 className="w-full px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 dark:bg-gray-700 dark:text-white"
                 required
               />
@@ -189,44 +301,18 @@ export const SignUp: React.FC<SignUpProps> = ({ onSwitchToSignIn }) => {
                 </select>
               </div>
               <div>
-                <label className="block text-gray-700 dark:text-gray-300 mb-2">Year Level</label>
-                <select
-                  name="yearLevel"
-                  value={formData.yearLevel}
-                  onChange={handleChange}
+                <label className="block text-gray-700 dark:text-gray-300 mb-2">Year-Section (Format: 2-4)</label>
+                <input
+                  type="text"
+                  name="section"
+                  value={formData.section}
+                  onChange={handleYearSectionChange}
+                  placeholder="2-4"
+                  maxLength="4"
                   className="w-full px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 dark:bg-gray-700 dark:text-white"
                   required
-                >
-                  <option value="">Select Year</option>
-                  <option value="1st Year">1st Year</option>
-                  <option value="2nd Year">2nd Year</option>
-                  <option value="3rd Year">3rd Year</option>
-                  <option value="4th Year">4th Year</option>
-                </select>
+                />
               </div>
-            </div>
-
-            <div>
-              <label className="block text-gray-700 dark:text-gray-300 mb-2">Section</label>
-              <select
-                name="section"
-                value={formData.section}
-                onChange={handleChange}
-                className="w-full px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 dark:bg-gray-700 dark:text-white"
-                required
-              >
-                <option value="">Select Section</option>
-                <option value="1-1">1-1</option>
-                <option value="1-2">1-2</option>
-                <option value="1-3">1-3</option>
-                <option value="1-4">1-4</option>
-                <option value="1-5">1-5</option>
-                <option value="2-1">2-1</option>
-                <option value="2-2">2-2</option>
-                <option value="2-3">2-3</option>
-                <option value="2-4">2-4</option>
-                <option value="2-5">2-5</option>
-              </select>
             </div>
 
             <div>

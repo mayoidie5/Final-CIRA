@@ -1,6 +1,7 @@
 import React, { createContext, useContext, useState, useEffect } from 'react';
 import { User } from '../types';
 import { MOCK_USERS, MOCK_PASSWORDS } from '../utils/mockData';
+import { initializeAdminAccount } from '../utils/initAdmin';
 
 interface AuthContextType {
   user: User | null;
@@ -17,6 +18,9 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const [user, setUser] = useState<User | null>(null);
 
   useEffect(() => {
+    // Initialize admin account on first load
+    initializeAdminAccount();
+
     const storedUser = localStorage.getItem('currentUser');
     if (storedUser) {
       setUser(JSON.parse(storedUser));
@@ -60,7 +64,11 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     }
 
     if (userData.studentId && !/^\d{2}-\d{4}$/.test(userData.studentId)) {
-      return { success: false, error: 'Student ID must be in format XX-XXXX' };
+      return { success: false, error: 'Student ID must be in format XX-XXXX (6 digits)' };
+    }
+
+    if (userData.section && !/^\d{1}-\d{1,2}$/.test(userData.section)) {
+      return { success: false, error: 'Year-Section must be in format X-X or X-XX (1 digit before dash, up to 2 after)' };
     }
 
     const users = JSON.parse(localStorage.getItem('users') || JSON.stringify(MOCK_USERS));
