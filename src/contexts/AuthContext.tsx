@@ -2,6 +2,10 @@ import React, { createContext, useContext, useState, useEffect } from 'react';
 import { User } from '../types';
 import { MOCK_USERS, MOCK_PASSWORDS } from '../utils/mockData';
 import { initializeAdminAccount } from '../utils/initAdmin';
+import { sendVerificationEmail } from '../utils/emailService';
+import { auth, db } from '../config/firebase';
+import { createUserWithEmailAndPassword, signInWithEmailAndPassword, signOut } from 'firebase/auth';
+import { doc, setDoc, collection, getDoc, updateDoc } from 'firebase/firestore';
 
 interface AuthContextType {
   user: User | null;
@@ -28,30 +32,67 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   }, []);
 
   const login = async (email: string, password: string) => {
-    const users = JSON.parse(localStorage.getItem('users') || JSON.stringify(MOCK_USERS));
-    const foundUser = users.find((u: User) => u.email === email);
+    try {
+      // Authenticate with Firebase
+      const userCredential = await signInWithEmailAndPassword(auth, email, password);
+      const firebaseUser = userCredential.user;
 
-    if (!foundUser) {
-      return { success: false, error: 'Invalid email or password' };
+      // Get user data from Firestore
+      const userDoc = await getDoc(doc(db, 'users', firebaseUser.uid));
+      
+      if (!userDoc.exists()) {
+        return { success: false, error: 'User data not found' };
+      }
+
+      let foundUser = userDoc.data() as User;
+
+      // Check if email was verified via the verification link
+      const verificationTokens = JSON.parse(localStorage.getItem('verificationTokens') || '{}');
+      const emailVerified = !verificationTokens[email]; // If no token exists, email was verified
+
+      if (emailVerified && !foundUser.isVerified) {
+        // User verified their email but Firestore wasn't updated
+        foundUser.isVerified = true;
+        console.log('📝 Email verified detected, updating Firestore');
+        try {
+          await updateDoc(doc(db, 'users', firebaseUser.uid), { isVerified: true });
+          console.log('✅ Firestore updated with verified status');
+        } catch (updateError) {
+          console.warn('⚠️ Could not update Firestore, but proceeding with login');
+        }
+      }
+
+      if (!foundUser.isVerified) {
+        return { success: false, needsVerification: true, error: 'Email not verified' };
+      }
+
+      setUser(foundUser);
+      localStorage.setItem('currentUser', JSON.stringify(foundUser));
+      console.log('✅ Login successful:', foundUser.email);
+      return { success: true };
+    } catch (error: any) {
+      console.error('❌ Login error:', error);
+      
+      // Handle Firebase specific errors
+      if (error.code === 'auth/user-not-found' || error.code === 'auth/wrong-password') {
+        return { success: false, error: 'Invalid email or password' };
+      } else if (error.code === 'auth/too-many-requests') {
+        return { success: false, error: 'Too many login attempts. Please try again later.' };
+      }
+      
+      return { success: false, error: error.message || 'Login failed' };
     }
-
-    const passwords = JSON.parse(localStorage.getItem('passwords') || JSON.stringify(MOCK_PASSWORDS));
-    if (passwords[email] !== password) {
-      return { success: false, error: 'Invalid email or password' };
-    }
-
-    if (!foundUser.isVerified) {
-      return { success: false, needsVerification: true, error: 'Email not verified' };
-    }
-
-    setUser(foundUser);
-    localStorage.setItem('currentUser', JSON.stringify(foundUser));
-    return { success: true };
   };
 
-  const logout = () => {
-    setUser(null);
-    localStorage.removeItem('currentUser');
+  const logout = async () => {
+    try {
+      await signOut(auth);
+      setUser(null);
+      localStorage.removeItem('currentUser');
+      console.log('✅ Logout successful');
+    } catch (error) {
+      console.error('❌ Logout error:', error);
+    }
   };
 
   const signup = async (userData: Partial<User> & { password: string; confirmPassword: string }) => {
@@ -71,34 +112,60 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       return { success: false, error: 'Year-Section must be in format X-X or X-XX (1 digit before dash, up to 2 after)' };
     }
 
-    const users = JSON.parse(localStorage.getItem('users') || JSON.stringify(MOCK_USERS));
-    const passwords = JSON.parse(localStorage.getItem('passwords') || JSON.stringify(MOCK_PASSWORDS));
+    try {
+      // Create user in Firebase Authentication
+      const userCredential = await createUserWithEmailAndPassword(auth, userData.email!, userData.password!);
+      const firebaseUser = userCredential.user;
 
-    if (users.find((u: User) => u.email === userData.email)) {
-      return { success: false, error: 'Email already exists' };
+      // Create new user object
+      const newUser: User = {
+        id: firebaseUser.uid,
+        firstName: userData.firstName!,
+        lastName: userData.lastName!,
+        email: userData.email!,
+        role: userData.role!,
+        studentId: userData.studentId,
+        course: userData.course,
+        section: userData.section,
+        department: 'College of Engineering Information Technology',
+        isVerified: false,
+        isPending: userData.role === 'class_rep',
+        theme: 'system',
+        createdAt: new Date().toISOString(),
+      };
+
+      // Save user to Firestore
+      await setDoc(doc(db, 'users', firebaseUser.uid), newUser);
+
+      // Also save to localStorage for backup
+      const users = JSON.parse(localStorage.getItem('users') || JSON.stringify(MOCK_USERS));
+      users.push(newUser);
+      localStorage.setItem('users', JSON.stringify(users));
+
+      // Send verification email
+      try {
+        await sendVerificationEmail(userData.email!);
+        console.log('✅ Verification email sent to:', userData.email);
+      } catch (error) {
+        console.error('⚠️ Failed to send verification email:', error);
+        // Don't fail signup if email sending fails
+      }
+
+      return { success: true };
+    } catch (error: any) {
+      console.error('❌ Signup error:', error);
+      
+      // Handle Firebase specific errors
+      if (error.code === 'auth/email-already-in-use') {
+        return { success: false, error: 'Email already registered' };
+      } else if (error.code === 'auth/weak-password') {
+        return { success: false, error: 'Password is too weak' };
+      } else if (error.code === 'auth/invalid-email') {
+        return { success: false, error: 'Invalid email format' };
+      }
+      
+      return { success: false, error: error.message || 'Failed to create account' };
     }
-
-    const newUser: User = {
-      id: Date.now().toString(),
-      firstName: userData.firstName!,
-      lastName: userData.lastName!,
-      email: userData.email!,
-      role: userData.role!,
-      studentId: userData.studentId,
-      department: 'College of Engineering Information Technology',
-      isVerified: false,
-      isPending: userData.role === 'class_rep',
-      theme: 'system',
-      createdAt: new Date().toISOString(),
-    };
-
-    users.push(newUser);
-    passwords[userData.email!] = userData.password;
-
-    localStorage.setItem('users', JSON.stringify(users));
-    localStorage.setItem('passwords', JSON.stringify(passwords));
-
-    return { success: true };
   };
 
   const updateUser = (updates: Partial<User>) => {
@@ -117,8 +184,11 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   };
 
   const resendVerification = async (email: string) => {
-    // Mock resend verification
-    console.log('Resending verification email to:', email);
+    try {
+      await sendVerificationEmail(email);
+    } catch (error) {
+      console.error('Failed to resend verification email:', error);
+    }
   };
 
   return (

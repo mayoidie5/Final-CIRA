@@ -1,0 +1,199 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <style>
+        body {
+            font-family: 'Arial', sans-serif;
+            background-color: #f5f5f5;
+            margin: 0;
+            padding: 20px;
+        }
+        .email-container {
+            max-width: 600px;
+            margin: 0 auto;
+            background-color: #ffffff;
+            border-radius: 8px;
+            overflow: hidden;
+            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+        }
+        .header {
+            background: linear-gradient(135deg, #1e40af 0%, #1e3a8a 100%);
+            color: #ffffff;
+            padding: 40px 30px;
+            text-align: center;
+        }
+        .header h1 {
+            margin: 0;
+            font-size: 28px;
+            font-weight: bold;
+        }
+        .content {
+            padding: 40px 30px;
+        }
+        .greeting {
+            font-size: 16px;
+            color: #333333;
+            margin-bottom: 20px;
+        }
+        .message {
+            font-size: 16px;
+            color: #333333;
+            margin-bottom: 30px;
+            line-height: 1.6;
+        }
+        .message strong {
+            color: #1e40af;
+        }
+        .button-container {
+            text-align: center;
+            margin: 40px 0;
+        }
+        .verify-button {
+            display: inline-block;
+            background-color: #2563eb;
+            color: #ffffff;
+            padding: 14px 40px;
+            border-radius: 6px;
+            text-decoration: none;
+            font-size: 16px;
+            font-weight: bold;
+            border: none;
+            cursor: pointer;
+            transition: background-color 0.3s ease;
+        }
+        .verify-button:hover {
+            background-color: #1d4ed8;
+        }
+        .link-section {
+            font-size: 14px;
+            color: #666666;
+            margin-bottom: 15px;
+        }
+        .link-box {
+            background-color: #f0f4ff;
+            border: 1px solid #e0e7ff;
+            padding: 15px;
+            border-radius: 4px;
+            word-break: break-all;
+            font-size: 13px;
+            color: #2563eb;
+            margin-bottom: 30px;
+            font-family: 'Courier New', monospace;
+        }
+        .warning-box {
+            background-color: #fef3c7;
+            border: 1px solid #fbbf24;
+            padding: 15px;
+            border-radius: 4px;
+            margin-bottom: 30px;
+        }
+        .warning-box p {
+            font-size: 14px;
+            color: #92400e;
+            margin: 0;
+        }
+        .footer-content {
+            font-size: 14px;
+            color: #666666;
+            margin-bottom: 10px;
+        }
+        .footer-content strong {
+            color: #1e40af;
+        }
+        .signature {
+            font-size: 12px;
+            color: #999999;
+            line-height: 1.6;
+            margin-bottom: 30px;
+        }
+        .footer {
+            background-color: #f0f4ff;
+            padding: 20px 30px;
+            text-align: center;
+            font-size: 12px;
+            color: #666666;
+            border-top: 1px solid #e0e7ff;
+        }
+        .footer p {
+            margin: 5px 0;
+        }
+        .no-reply-notice {
+            background-color: #fee2e2;
+            border: 1px solid #fecaca;
+            padding: 12px 15px;
+            border-radius: 4px;
+            font-size: 12px;
+            color: #991b1b;
+            margin-bottom: 10px;
+            text-align: center;
+        }
+        .divider {
+            height: 1px;
+            background-color: #e5e7eb;
+            margin: 30px 0;
+        }
+    </style>
+</head>
+<body>
+    <div class="email-container">
+        <!-- Header -->
+        <div class="header">
+            <h1>Email Verification</h1>
+        </div>
+
+        <!-- Main Content -->
+        <div class="content">
+            <p class="greeting">Hello,</p>
+
+            <p class="message">
+                Thank you for creating an account with <strong>{{app_name}}</strong>! 
+                To complete your registration and verify your email address, please click the button below:
+            </p>
+
+            <!-- Verification Button -->
+            <div class="button-container">
+                <a href="{{verification_link}}" class="verify-button">
+                    ✓ Verify Email Address
+                </a>
+            </div>
+
+            <p class="link-section">Or copy and paste this link in your browser:</p>
+            <div class="link-box">{{verification_link}}</div>
+
+            <!-- Warning Box -->
+            <div class="warning-box">
+                <p>
+                    <strong>⚠️ Important:</strong> This verification link will expire in 24 hours. 
+                    If you didn't create an account, please ignore this email or contact our support team.
+                </p>
+            </div>
+
+            <div class="divider"></div>
+
+            <p class="footer-content">
+                Account Email: <strong>{{user_email}}</strong>
+            </p>
+
+            <p class="signature">
+                If you have any questions or need assistance, please don't hesitate to contact our support team.<br>
+                <br>
+                Best regards,<br>
+                <strong>{{app_name}} Team</strong><br>
+                Pamantasan ng Lungsod ng Valenzuela<br>
+                College of Engineering and Information Technology
+            </p>
+        </div>
+
+        <!-- Footer -->
+        <div class="footer">
+            <div class="no-reply-notice">
+                ⚠️ This is an automated no-reply message. Please do not reply to this email.
+            </div>
+            <p>© 2025 {{app_name}}. All rights reserved.</p>
+            <p>Pamantasan ng Lungsod ng Valenzuela | College of Engineering and Information Technology</p>
+        </div>
+    </div>
+</body>
+</html>

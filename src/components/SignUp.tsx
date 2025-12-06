@@ -3,6 +3,7 @@ import { Eye, EyeOff, AlertCircle, CheckCircle, Moon, Sun } from 'lucide-react';
 import { useAuth } from '../contexts/AuthContext';
 import { useTheme } from '../contexts/ThemeContext';
 import { UserRole } from '../types';
+import { AccountCreatedModal } from './AccountCreatedModal';
 import logoNavyBlue from '../../assets/MainLogoNavyBlue.png';
 import logoWhite from '../../assets/MainLogoWhite.png';
 
@@ -36,6 +37,8 @@ export const SignUp: React.FC<SignUpProps> = ({ onSwitchToSignIn }) => {
   const [error, setError] = useState('');
   const [success, setSuccess] = useState(false);
   const [loading, setLoading] = useState(false);
+  const [showAccountCreatedModal, setShowAccountCreatedModal] = useState(false);
+  const [createdEmail, setCreatedEmail] = useState('');
   const [fieldErrors, setFieldErrors] = useState<{
     firstName?: string;
     lastName?: string;
@@ -189,10 +192,23 @@ export const SignUp: React.FC<SignUpProps> = ({ onSwitchToSignIn }) => {
 
     if (result.success) {
       setSuccess(true);
-      // Redirect to sign in after 2 seconds
+      setCreatedEmail(emailToSubmit);
+      setShowAccountCreatedModal(true);
+      // Reset form
       setTimeout(() => {
-        onSwitchToSignIn();
-      }, 2000);
+        setFormData({
+          firstName: '',
+          lastName: '',
+          email: '',
+          role: 'student' as UserRole,
+          studentId: '',
+          course: '',
+          section: '',
+          password: '',
+          confirmPassword: '',
+        });
+        setFieldErrors({});
+      }, 500);
     } else {
       setError(result.error || 'Sign up failed');
     }
@@ -751,6 +767,15 @@ export const SignUp: React.FC<SignUpProps> = ({ onSwitchToSignIn }) => {
           </div>
         </div>
       </div>
+
+      <AccountCreatedModal
+        isOpen={showAccountCreatedModal}
+        email={createdEmail}
+        onClose={() => {
+          setShowAccountCreatedModal(false);
+          onSwitchToSignIn();
+        }}
+      />
     </div>
   );
 };

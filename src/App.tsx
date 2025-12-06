@@ -4,6 +4,7 @@ import { ThemeProvider } from './contexts/ThemeContext';
 import { SignIn } from './components/SignIn';
 import { SignUp } from './components/SignUp';
 import { Header } from './components/Header';
+import { EmailVerificationModal } from './components/EmailVerification';
 import { Dashboard } from './components/Dashboard';
 import { ReportIssue } from './components/ReportIssue';
 import { TicketList } from './components/TicketList';
@@ -23,6 +24,7 @@ const AppContent: React.FC = () => {
   const [showSettings, setShowSettings] = useState(false);
   const [showTutorial, setShowTutorial] = useState(false);
   const [sidebarOpen, setSidebarOpen] = useState(true);
+  const [showEmailVerificationModal, setShowEmailVerificationModal] = useState(false);
 
   // Initialize localStorage with required data on first load
   useEffect(() => {
@@ -32,19 +34,44 @@ const AppContent: React.FC = () => {
     if (!localStorage.getItem('notifications')) {
       localStorage.setItem('notifications', JSON.stringify([]));
     }
+
+    // Check if user arrived from email verification link
+    const urlParams = new URLSearchParams(window.location.search);
+    if (urlParams.has('token') && urlParams.has('email')) {
+      setShowEmailVerificationModal(true);
+    }
   }, []);
 
   if (!user) {
     if (authView === 'signin') {
       return (
-        <SignIn
-          onSwitchToSignUp={() => setAuthView('signup')}
-          onSignInSuccess={() => setCurrentPage('dashboard')}
-        />
+        <>
+          <SignIn
+            onSwitchToSignUp={() => setAuthView('signup')}
+            onSignInSuccess={() => setCurrentPage('dashboard')}
+          />
+          <EmailVerificationModal 
+            isOpen={showEmailVerificationModal} 
+            onClose={() => {
+              setShowEmailVerificationModal(false);
+              // Clear URL parameters after verification
+              window.history.replaceState({}, document.title, window.location.pathname);
+            }} 
+          />
+        </>
       );
     } else {
       return (
-        <SignUp onSwitchToSignIn={() => setAuthView('signin')} />
+        <>
+          <SignUp onSwitchToSignIn={() => setAuthView('signin')} />
+          <EmailVerificationModal 
+            isOpen={showEmailVerificationModal} 
+            onClose={() => {
+              setShowEmailVerificationModal(false);
+              window.history.replaceState({}, document.title, window.location.pathname);
+            }} 
+          />
+        </>
       );
     }
   }
@@ -176,6 +203,10 @@ const AppContent: React.FC = () => {
 
       {showSettings && <Settings onClose={() => setShowSettings(false)} />}
       {showTutorial && <Tutorial onClose={() => setShowTutorial(false)} />}
+      <EmailVerificationModal 
+        isOpen={showEmailVerificationModal} 
+        onClose={() => setShowEmailVerificationModal(false)} 
+      />
     </div>
   );
 };
