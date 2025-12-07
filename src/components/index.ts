@@ -15,6 +15,8 @@ export { EmptyState } from './EmptyState';
 export { ValidationAlert } from './ValidationAlert';
 export { ConfirmDialog } from './ConfirmDialog';
 export { Tooltip } from './Tooltip';
+export { EmailVerificationModal } from './EmailVerification';
+export { AccountCreatedModal } from './AccountCreatedModal';
 
 // Input Components
 export { SearchFilter } from './SearchFilter';

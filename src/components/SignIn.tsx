@@ -28,7 +28,10 @@ export const SignIn: React.FC<SignInProps> = ({ onSwitchToSignUp, onSignInSucces
     setNeedsVerification(false);
     setLoading(true);
 
-    const result = await login(email, password);
+    // Auto-append @plv.edu.ph to email if not already present
+    const fullEmail = email.includes('@') ? email : `${email}@plv.edu.ph`;
+
+    const result = await login(fullEmail, password);
     setLoading(false);
 
     if (result.success) {
@@ -42,8 +45,26 @@ export const SignIn: React.FC<SignInProps> = ({ onSwitchToSignUp, onSignInSucces
   };
 
   const handleResendVerification = async () => {
-    await resendVerification(email);
+    const fullEmail = email.includes('@') ? email : `${email}@plv.edu.ph`;
+    await resendVerification(fullEmail);
     alert('Verification email sent!');
+  };
+
+  const handleEmailChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    let value = e.target.value.trim();
+    
+    // Remove @plv.edu.ph if it exists to prevent duplication
+    if (value.endsWith('@plv.edu.ph')) {
+      value = value.replace('@plv.edu.ph', '');
+    }
+    
+    setEmail(value);
+  };
+
+  const handleEmailBlur = () => {
+    if (email && !email.includes('@')) {
+      setEmail(`${email}@plv.edu.ph`);
+    }
   };
 
   return (
@@ -81,14 +102,21 @@ export const SignIn: React.FC<SignInProps> = ({ onSwitchToSignUp, onSignInSucces
             <form onSubmit={handleSubmit} className="space-y-4" style={{ marginTop: '2rem' }}>
             <div>
               <label className="block text-gray-700 dark:text-gray-300 mb-2">Email</label>
-              <input
-                type="email"
-                value={email}
-                onChange={(e) => setEmail(e.target.value)}
-                className="w-full px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 dark:bg-gray-700 dark:text-white"
-                placeholder="your.email@plv.edu.ph"
-                required
-              />
+              <div className="relative">
+                <input
+                  type="text"
+                  value={email}
+                  onChange={handleEmailChange}
+                  onBlur={handleEmailBlur}
+                  className="w-full px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 dark:bg-gray-700 dark:text-white"
+                  placeholder="your.email"
+                  required
+                  autoComplete="email"
+                />
+                <span className="absolute right-4 top-1/2 -translate-y-1/2 text-gray-500 dark:text-gray-400 pointer-events-none">
+                  @plv.edu.ph
+                </span>
+              </div>
             </div>
 
             <div>
