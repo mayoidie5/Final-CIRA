@@ -2,7 +2,7 @@ import React from 'react';
 import { useAuth } from '../contexts/AuthContext';
 import { useTickets } from '../hooks/useTickets';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer, PieChart, Pie, Cell, LineChart, Line } from 'recharts';
-import { FileText, CheckCircle, Clock, AlertTriangle, TrendingUp, Plus } from 'lucide-react';
+import { FileText, CheckCircle, Clock, AlertTriangle, AlertCircle, TrendingUp, Plus } from 'lucide-react';
 
 interface DashboardProps {
   onNavigate: (page: string) => void;
@@ -151,10 +151,10 @@ export const Dashboard: React.FC<DashboardProps> = ({ onNavigate }) => {
         <div className="bg-white dark:bg-gray-800 p-4 sm:p-6 rounded-lg shadow border border-gray-200 dark:border-gray-700">
           <div className="flex items-center justify-between">
             <div>
-              <p className="text-gray-600 dark:text-gray-400">Pending</p>
+              <p className="text-gray-600 dark:text-gray-400">Pending Resolution</p>
               <p className="text-gray-800 dark:text-white mt-2">{pendingCount}</p>
             </div>
-            <AlertTriangle className="text-red-600 dark:text-red-400" size={32} />
+            <AlertCircle className="text-orange-600 dark:text-orange-400" size={32} />
           </div>
         </div>
       </div>

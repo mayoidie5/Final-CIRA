@@ -3,16 +3,21 @@ rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
 
-    // Helper function to check if a user is an admin
-    // This function safely checks if a user document exists and has role == 'admin'
+    // Helper function to safely check admin role
     function isAdmin(userId) {
-      return get(/databases/$(database)/documents/users/$(userId)).data.role == 'admin';
+      let user = get(/databases/$(database)/documents/users/$(userId));
+      return user.exists && user.data.role == 'admin';
     }
 
-    // Helper function to check if a user is a class representative
+    // Helper function to safely check class rep role
     function isClassRep(userId) {
-      let userRole = get(/databases/$(database)/documents/users/$(userId)).data.role;
-      return userRole == 'class_rep' || userRole == 'class-representative';
+      let user = get(/databases/$(database)/documents/users/$(userId));
+      return user.exists && (user.data.role == 'class_rep' || user.data.role == 'class-representative');
+    }
+
+    // Helper function to check if user is the ticket creator
+    function isTicketCreator(userId) {
+      return userId == resource.data.userId;
     }
 
     // Rules for the 'users' collection
@@ -30,14 +35,35 @@ service cloud.firestore {
       // Any authenticated user can create a ticket
       allow create: if request.auth != null;
       
-      // Ticket creator can update their own tickets
-      allow update: if request.auth != null && request.auth.uid == resource.data.userId;
+      // ===== STUDENT (Ticket Creator) UPDATES =====
+      // Student can update their own ticket
+      allow update: if request.auth != null && isTicketCreator(request.auth.uid);
       
-      // Ticket creator can delete their own tickets
-      allow delete: if request.auth != null && request.auth.uid == resource.data.userId;
+      // ===== STUDENT DELETES =====
+      // Student can delete their own ticket
+      allow delete: if request.auth != null && isTicketCreator(request.auth.uid);
       
-      // Admins and class reps can update/delete any ticket
-      allow update, delete: if request.auth != null && (isAdmin(request.auth.uid) || isClassRep(request.auth.uid));
+      // ===== ADMIN/CLASS REP UPDATES =====
+      // Admins can update any ticket
+      allow update: if request.auth != null && isAdmin(request.auth.uid);
+      
+      // Class reps can update any ticket
+      allow update: if request.auth != null && isClassRep(request.auth.uid);
+      
+      // ===== ADMIN/CLASS REP DELETES =====
+      // Admins can delete any ticket
+      allow delete: if request.auth != null && isAdmin(request.auth.uid);
+      
+      // Class reps can delete any ticket
+      allow delete: if request.auth != null && isClassRep(request.auth.uid);
+      
+      // Sub-collection for comments
+      match /comments/{commentId} {
+        allow read: if request.auth != null;
+        allow create: if request.auth != null;
+        allow update, delete: if request.auth != null && request.auth.uid == resource.data.userId;
+        allow update, delete: if request.auth != null && (isAdmin(request.auth.uid) || isClassRep(request.auth.uid));
+      }
     }
 
     // Rules for the 'form-structure' collection
@@ -49,20 +75,22 @@ service cloud.firestore {
     // Rules for the 'notifications' collection
     match /notifications/{notificationId} {
       // Users can read their own notifications
-      allow read: if request.auth != null && (request.auth.uid == resource.data.userId || isAdmin(request.auth.uid));
+      allow read: if request.auth != null && request.auth.uid == resource.data.userId;
+      allow read: if request.auth != null && isAdmin(request.auth.uid);
       
       // Users can update their own notifications (e.g., mark as read)
-      allow update: if request.auth != null && (request.auth.uid == resource.data.userId || isAdmin(request.auth.uid));
+      allow update: if request.auth != null && request.auth.uid == resource.data.userId;
+      allow update: if request.auth != null && isAdmin(request.auth.uid);
       
-      // Any authenticated user can create notifications (for system notifications)
+      // Any authenticated user can create notifications
       allow create: if request.auth != null;
       
       // Users can delete their own notifications
-      allow delete: if request.auth != null && (request.auth.uid == resource.data.userId || isAdmin(request.auth.uid));
+      allow delete: if request.auth != null && request.auth.uid == resource.data.userId;
+      allow delete: if request.auth != null && isAdmin(request.auth.uid);
     }
 
-    // Rules for the 'formConfigs' collection (for form editor)
-    // Collection name is 'formConfigs' with 's' at the end
+    // Rules for the 'formConfigs' collection
     match /formConfigs/{configId} {
       // All authenticated users can read form configs
       allow read: if request.auth != null;
