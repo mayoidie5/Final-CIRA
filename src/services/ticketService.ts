@@ -178,7 +178,8 @@ export const updateTicket = async (
   updates: Partial<Ticket>
 ): Promise<void> => {
   try {
-    console.log('📝 Updating ticket:', ticketId, updates);
+    console.log('📝 Updating ticket:', ticketId);
+    console.log('   Incoming updates:', updates);
 
     const ticketRef = doc(db, 'tickets', ticketId);
     const updateData = {
@@ -189,11 +190,16 @@ export const updateTicket = async (
     // Remove id from updates to avoid setting it
     delete (updateData as any).id;
 
+    console.log('   Final update data:', updateData);
+
     await updateDoc(ticketRef, updateData);
 
     console.log('✅ Ticket updated:', ticketId);
   } catch (error) {
+    const err = error as any;
     console.error('❌ Error updating ticket:', error);
+    console.error('   Error code:', err?.code);
+    console.error('   Error message:', err?.message);
     throw error;
   }
 };

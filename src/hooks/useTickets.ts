@@ -57,9 +57,12 @@ export const useTickets = () => {
         status: 'submitted',
       };
 
-      // Only add acceptedBy if user is class_rep
+      // If class_rep, automatically request the ticket (skip to requested status)
       if (user.role === 'class_rep') {
         ticketPayload.acceptedBy = user.id;
+        ticketPayload.status = 'requested';
+        // Class reps skip student confirmation - go straight to resolution confirmation
+        ticketPayload.studentConfirmedResolution = true;
       }
 
       const newTicketId = await ticketService.createTicket(ticketPayload);
@@ -89,37 +92,55 @@ export const useTickets = () => {
     try {
       setError(null);
       console.log('📝 Updating ticket:', ticketId);
+      console.log('   Updates:', JSON.stringify(updates));
 
-      await ticketService.updateTicket(ticketId, updates);
+      // Update ticket in Firestore
+      try {
+        await ticketService.updateTicket(ticketId, updates);
+        console.log('✅ Firestore update successful');
+      } catch (updateErr) {
+        console.error('❌ Firestore update failed:', updateErr);
+        throw updateErr;
+      }
 
       // Reload tickets
+      console.log('🔄 Reloading tickets...');
       await loadTickets();
+      console.log('✅ Tickets reloaded');
 
       // Notify relevant users
       if (updates.status) {
         const ticket = tickets.find(t => t.id === ticketId);
         if (ticket) {
-          await addNotification(
-            ticket.userId,
-            ticketId,
-            `🔄 Ticket status updated to: ${updates.status}`,
-            `/tickets/${ticketId}`
-          );
-          if (ticket.acceptedBy) {
+          console.log('📢 Sending notifications for status change');
+          try {
             await addNotification(
-              ticket.acceptedBy,
+              ticket.userId,
               ticketId,
               `🔄 Ticket status updated to: ${updates.status}`,
               `/tickets/${ticketId}`
             );
+            if (ticket.acceptedBy) {
+              await addNotification(
+                ticket.acceptedBy,
+                ticketId,
+                `🔄 Ticket status updated to: ${updates.status}`,
+                `/tickets/${ticketId}`
+              );
+            }
+            console.log('✅ Notifications sent');
+          } catch (notifErr) {
+            // Don't fail the whole operation if notifications fail
+            console.warn('⚠️ Warning: notifications failed:', notifErr);
           }
         }
       }
 
-      console.log('✅ Ticket updated:', ticketId);
+      console.log('✅ Ticket updated successfully:', ticketId);
     } catch (err) {
       const errorMessage = err instanceof Error ? err.message : 'Failed to update ticket';
       console.error('❌ Error updating ticket:', errorMessage);
+      console.error('   Full error:', err);
       setError(errorMessage);
       throw err;
     }

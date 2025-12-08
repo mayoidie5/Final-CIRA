@@ -32,14 +32,18 @@ export const TicketDetails: React.FC<TicketDetailsProps> = ({ ticket, onBack }) 
     setConfirmDialog({
       title: 'Accept Ticket',
       message: 'Are you sure you want to accept this ticket? You will be responsible for managing it.',
-      onConfirm: () => {
-        updateTicket(ticket.id, {
-          status: 'requested',
-          acceptedBy: user?.id,
-        });
-        notifyAdmin(`Ticket #${ticket.id.slice(0, 8)} accepted by ${user?.firstName} ${user?.lastName}`, ticket.id);
-        setConfirmDialog(null);
-        setTimeout(() => onBack(), 500);
+      onConfirm: async () => {
+        try {
+          await updateTicket(ticket.id, {
+            status: 'requested',
+            acceptedBy: user?.id,
+          });
+          await notifyAdmin(`Ticket #${ticket.id.slice(0, 8)} accepted by ${user?.firstName} ${user?.lastName}`, ticket.id);
+          setConfirmDialog(null);
+          setTimeout(() => onBack(), 500);
+        } catch (err) {
+          console.error('Error accepting ticket:', err);
+        }
       },
       type: 'info',
     });
@@ -53,14 +57,18 @@ export const TicketDetails: React.FC<TicketDetailsProps> = ({ ticket, onBack }) 
     setConfirmDialog({
       title: 'Start Progress',
       message: 'Are you sure you want to mark this ticket as in progress?',
-      onConfirm: () => {
-        updateTicket(ticket.id, {
-          status: 'in_progress',
-          adminNotes: adminNote,
-        });
-        setAdminNote('');
-        setConfirmDialog(null);
-        setTimeout(() => onBack(), 500);
+      onConfirm: async () => {
+        try {
+          await updateTicket(ticket.id, {
+            status: 'in_progress',
+            adminNotes: adminNote,
+          });
+          setAdminNote('');
+          setConfirmDialog(null);
+          setTimeout(() => onBack(), 500);
+        } catch (err) {
+          console.error('Error starting progress:', err);
+        }
       },
       type: 'info',
     });
@@ -70,12 +78,16 @@ export const TicketDetails: React.FC<TicketDetailsProps> = ({ ticket, onBack }) 
     setConfirmDialog({
       title: 'Submit for Resolution',
       message: 'Are you sure the issue has been resolved? This will notify the class representative for confirmation.',
-      onConfirm: () => {
-        updateTicket(ticket.id, {
-          status: 'pending_resolution',
-        });
-        setConfirmDialog(null);
-        setTimeout(() => onBack(), 500);
+      onConfirm: async () => {
+        try {
+          await updateTicket(ticket.id, {
+            status: 'pending_resolution',
+          });
+          setConfirmDialog(null);
+          setTimeout(() => onBack(), 500);
+        } catch (err) {
+          console.error('Error submitting for resolution:', err);
+        }
       },
       type: 'info',
     });
@@ -85,13 +97,29 @@ export const TicketDetails: React.FC<TicketDetailsProps> = ({ ticket, onBack }) 
     setConfirmDialog({
       title: 'Confirm Resolution',
       message: 'Are you confirming that the issue has been resolved? The class representative will still need to verify before the ticket is closed.',
-      onConfirm: () => {
-        updateTicket(ticket.id, {
-          studentConfirmedResolution: true,
-        });
-        notifyClassReps(`Student confirmed resolution for Ticket #${ticket.id.slice(0, 8)}. Awaiting class rep final confirmation.`, ticket.id);
-        setConfirmDialog(null);
-        setTimeout(() => onBack(), 500);
+      onConfirm: async () => {
+        try {
+          console.log('🟢 Student confirming resolution for ticket:', ticket.id);
+          console.log('   Ticket userId:', ticket.userId);
+          console.log('   Current user id:', user?.id);
+          console.log('   Updating with:', { studentConfirmedResolution: true, status: 'request_for_resolution' });
+          
+          await updateTicket(ticket.id, {
+            studentConfirmedResolution: true,
+            status: 'request_for_resolution',
+          });
+          
+          console.log('🟢 Update ticket call completed');
+          
+          await notifyClassReps(`Student confirmed resolution for Ticket #${ticket.id.slice(0, 8)}. Awaiting class rep final confirmation.`, ticket.id);
+          
+          console.log('🟢 Notification sent, closing dialog');
+          setConfirmDialog(null);
+          setTimeout(() => onBack(), 500);
+        } catch (err) {
+          console.error('🔴 Error confirming resolution:', err);
+          setValidationError(`Failed to confirm resolution: ${err instanceof Error ? err.message : 'Unknown error'}`);
+        }
       },
       type: 'info',
     });
@@ -105,14 +133,43 @@ export const TicketDetails: React.FC<TicketDetailsProps> = ({ ticket, onBack }) 
     setConfirmDialog({
       title: 'Confirm Resolution',
       message: 'Are you sure the issue has been completely resolved? This ticket will be moved to the archive.',
-      onConfirm: () => {
-        updateTicket(ticket.id, {
-          status: 'resolved',
-          resolutionNote,
-          resolvedAt: new Date().toISOString(),
-        });
-        setConfirmDialog(null);
-        setTimeout(() => onBack(), 500);
+      onConfirm: async () => {
+        try {
+          await updateTicket(ticket.id, {
+            status: 'resolved',
+            resolutionNote,
+            resolvedAt: new Date().toISOString(),
+          });
+          setConfirmDialog(null);
+          setTimeout(() => onBack(), 500);
+        } catch (err) {
+          console.error('Error confirming resolution:', err);
+        }
+      },
+      type: 'info',
+    });
+  };
+
+  const handleClassRepFinalize = () => {
+    if (!resolutionNote) {
+      setValidationError('Please add a resolution note to finalize the ticket.');
+      return;
+    }
+    setConfirmDialog({
+      title: 'Finalize Ticket',
+      message: 'Are you sure the issue has been completely resolved? This ticket will be moved to the archive.',
+      onConfirm: async () => {
+        try {
+          await updateTicket(ticket.id, {
+            status: 'resolved',
+            resolutionNote,
+            resolvedAt: new Date().toISOString(),
+          });
+          setConfirmDialog(null);
+          setTimeout(() => onBack(), 500);
+        } catch (err) {
+          console.error('Error finalizing ticket:', err);
+        }
       },
       type: 'info',
     });
@@ -148,8 +205,9 @@ export const TicketDetails: React.FC<TicketDetailsProps> = ({ ticket, onBack }) 
   const canAccept = user?.role === 'class_rep' && ticket.status === 'submitted';
   const canStartProgress = user?.role === 'admin' && ticket.status === 'requested';
   const canSubmitResolution = user?.role === 'admin' && ticket.status === 'in_progress';
-  const canConfirmResolution = user?.role === 'class_rep' && ticket.status === 'pending_resolution' && ticket.studentConfirmedResolution;
+  const canConfirmResolution = (user?.role === 'class_rep' || user?.role === 'admin') && ticket.status === 'pending_resolution' && ticket.studentConfirmedResolution;
   const canStudentConfirmResolution = user?.role === 'student' && ticket.status === 'pending_resolution' && ticket.userId === user?.id && !ticket.studentConfirmedResolution;
+  const canClassRepFinalize = user?.role === 'class_rep' && ticket.status === 'request_for_resolution' && ticket.userId !== user?.id;
   const canComment = user?.role === 'student' && ticket.userId === user?.id && ticket.status !== 'resolved';
 
   const getStatusColor = (status: string) => {
@@ -239,6 +297,12 @@ export const TicketDetails: React.FC<TicketDetailsProps> = ({ ticket, onBack }) 
                 <Calendar size={16} />
                 <span className="text-sm sm:text-base">{new Date(ticket.createdAt).toLocaleString()}</span>
               </p>
+              {ticket.resolvedAt && ticket.status === 'resolved' && (
+                <p className="flex items-center gap-2 sm:justify-end mt-2">
+                  <Calendar size={16} />
+                  <span className="text-sm sm:text-base">Resolved: {new Date(ticket.resolvedAt).toLocaleString()}</span>
+                </p>
+              )}
             </div>
           </div>
         </div>
@@ -396,16 +460,6 @@ export const TicketDetails: React.FC<TicketDetailsProps> = ({ ticket, onBack }) 
             </div>
           )}
 
-          {/* Student Confirmation Status */}
-          {ticket.status === 'pending_resolution' && ticket.studentConfirmedResolution && (
-            <div className="bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 p-4 rounded-lg">
-              <p className="text-blue-800 dark:text-blue-300 flex items-center gap-2">
-                <CheckCircle size={20} />
-                Student has confirmed the resolution. Awaiting class representative final confirmation.
-              </p>
-            </div>
-          )}
-
           {/* Actions for Class Rep */}
           {canAccept && (
             <div className="pt-4 border-t border-gray-200 dark:border-gray-700">
@@ -474,7 +528,7 @@ export const TicketDetails: React.FC<TicketDetailsProps> = ({ ticket, onBack }) 
             <div className="pt-4 border-t border-gray-200 dark:border-gray-700 space-y-4">
               <div className="bg-green-50 dark:bg-green-900/20 border border-green-200 dark:border-green-800 p-4 rounded-lg">
                 <p className="text-green-800 dark:text-green-300">
-                  The student has confirmed the resolution. Please verify and add your final confirmation note.
+                  Please verify and add your final confirmation note.
                 </p>
               </div>
               <div>
@@ -492,6 +546,33 @@ export const TicketDetails: React.FC<TicketDetailsProps> = ({ ticket, onBack }) 
                 className="w-full bg-green-600 hover:bg-green-700 text-white py-3 rounded-lg transition-colors"
               >
                 Confirm Resolution
+              </button>
+            </div>
+          )}
+
+          {/* Actions for Class Rep - Finalize Resolution */}
+          {canClassRepFinalize && (
+            <div className="pt-4 border-t border-gray-200 dark:border-gray-700 space-y-4">
+              <div className="bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 p-4 rounded-lg">
+                <p className="text-blue-800 dark:text-blue-300">
+                  Student has confirmed resolution. Please verify and add your resolution note to finalize.
+                </p>
+              </div>
+              <div>
+                <label className="block text-gray-700 dark:text-gray-300 mb-2">Resolution Note *</label>
+                <textarea
+                  value={resolutionNote}
+                  onChange={(e) => setResolutionNote(e.target.value)}
+                  className="w-full px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 dark:bg-gray-700 dark:text-white"
+                  rows={3}
+                  placeholder="Verify and document that the issue has been resolved..."
+                />
+              </div>
+              <button
+                onClick={handleClassRepFinalize}
+                className="w-full bg-green-600 hover:bg-green-700 text-white py-3 rounded-lg transition-colors"
+              >
+                Finalize Ticket
               </button>
             </div>
           )}

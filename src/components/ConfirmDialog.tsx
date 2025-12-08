@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { AlertCircle, CheckCircle, X } from 'lucide-react';
 
 interface ConfirmDialogProps {
@@ -6,7 +6,7 @@ interface ConfirmDialogProps {
   message: string;
   confirmText?: string;
   cancelText?: string;
-  onConfirm: () => void;
+  onConfirm: () => void | Promise<void>;
   onCancel: () => void;
   type?: 'danger' | 'warning' | 'info';
 }
@@ -20,6 +20,21 @@ export const ConfirmDialog: React.FC<ConfirmDialogProps> = ({
   onCancel,
   type = 'info',
 }) => {
+  const [isLoading, setIsLoading] = useState(false);
+
+  const handleConfirm = async () => {
+    try {
+      setIsLoading(true);
+      console.log('🔄 Executing dialog confirmation callback...');
+      await onConfirm();
+      console.log('✅ Dialog confirmation completed');
+    } catch (error) {
+      console.error('❌ Error in dialog confirmation:', error);
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
   const getIcon = () => {
     switch (type) {
       case 'danger':
@@ -50,7 +65,8 @@ export const ConfirmDialog: React.FC<ConfirmDialogProps> = ({
             <h3 className="text-gray-800 dark:text-white">{title}</h3>
             <button
               onClick={onCancel}
-              className="p-2 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-full transition-colors"
+              disabled={isLoading}
+              className="p-2 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-full transition-colors disabled:opacity-50"
             >
               <X className="text-gray-600 dark:text-gray-400" size={20} />
             </button>
@@ -64,15 +80,17 @@ export const ConfirmDialog: React.FC<ConfirmDialogProps> = ({
           <div className="flex gap-3">
             <button
               onClick={onCancel}
-              className="flex-1 px-4 py-2 border border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-300 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors"
+              disabled={isLoading}
+              className="flex-1 px-4 py-2 border border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-300 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
             >
               {cancelText}
             </button>
             <button
-              onClick={onConfirm}
-              className={`flex-1 px-4 py-2 ${getButtonColor()} text-white rounded-lg transition-colors`}
+              onClick={handleConfirm}
+              disabled={isLoading}
+              className={`flex-1 px-4 py-2 ${getButtonColor()} text-white rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed`}
             >
-              {confirmText}
+              {isLoading ? 'Processing...' : confirmText}
             </button>
           </div>
         </div>
