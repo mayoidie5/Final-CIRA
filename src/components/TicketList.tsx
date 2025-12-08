@@ -73,7 +73,7 @@ export const TicketList: React.FC<TicketListProps> = ({ view = 'all', selectedTi
         );
       }
     } else if (user?.role === 'admin') {
-      userTickets = tickets.filter(t => t.status !== 'resolved');
+      userTickets = tickets.filter(t => t.status !== 'resolved' && t.status !== 'submitted');
     }
 
     return userTickets;

@@ -14,7 +14,7 @@ export const Dashboard: React.FC<DashboardProps> = ({ onNavigate }) => {
 
   const getUserTickets = () => {
     if (user?.role === 'admin') {
-      return tickets;
+      return tickets.filter(t => t.status !== 'resolved' && t.status !== 'submitted');
     } else if (user?.role === 'class_rep') {
       return tickets.filter(t => t.acceptedBy === user.id || t.status === 'submitted');
     } else {

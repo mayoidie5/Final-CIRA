@@ -148,7 +148,7 @@ export const TicketDetails: React.FC<TicketDetailsProps> = ({ ticket, onBack }) 
   const canAccept = user?.role === 'class_rep' && ticket.status === 'submitted';
   const canStartProgress = user?.role === 'admin' && ticket.status === 'requested';
   const canSubmitResolution = user?.role === 'admin' && ticket.status === 'in_progress';
-  const canConfirmResolution = user?.role === 'class_rep' && ticket.status === 'pending_resolution' && ticket.studentConfirmedResolution;
+  const canConfirmResolution = (user?.role === 'class_rep' || user?.role === 'admin') && ticket.status === 'pending_resolution' && ticket.studentConfirmedResolution;
   const canStudentConfirmResolution = user?.role === 'student' && ticket.status === 'pending_resolution' && ticket.userId === user?.id && !ticket.studentConfirmedResolution;
   const canComment = user?.role === 'student' && ticket.userId === user?.id && ticket.status !== 'resolved';
 
@@ -396,16 +396,6 @@ export const TicketDetails: React.FC<TicketDetailsProps> = ({ ticket, onBack }) 
             </div>
           )}
 
-          {/* Student Confirmation Status */}
-          {ticket.status === 'pending_resolution' && ticket.studentConfirmedResolution && (
-            <div className="bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 p-4 rounded-lg">
-              <p className="text-blue-800 dark:text-blue-300 flex items-center gap-2">
-                <CheckCircle size={20} />
-                Student has confirmed the resolution. Awaiting class representative final confirmation.
-              </p>
-            </div>
-          )}
-
           {/* Actions for Class Rep */}
           {canAccept && (
             <div className="pt-4 border-t border-gray-200 dark:border-gray-700">
@@ -474,7 +464,7 @@ export const TicketDetails: React.FC<TicketDetailsProps> = ({ ticket, onBack }) 
             <div className="pt-4 border-t border-gray-200 dark:border-gray-700 space-y-4">
               <div className="bg-green-50 dark:bg-green-900/20 border border-green-200 dark:border-green-800 p-4 rounded-lg">
                 <p className="text-green-800 dark:text-green-300">
-                  The student has confirmed the resolution. Please verify and add your final confirmation note.
+                  Please verify and add your final confirmation note.
                 </p>
               </div>
               <div>

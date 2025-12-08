@@ -57,9 +57,12 @@ export const useTickets = () => {
         status: 'submitted',
       };
 
-      // Only add acceptedBy if user is class_rep
+      // If class_rep, automatically request the ticket (skip to requested status)
       if (user.role === 'class_rep') {
         ticketPayload.acceptedBy = user.id;
+        ticketPayload.status = 'requested';
+        // Class reps skip student confirmation - go straight to resolution confirmation
+        ticketPayload.studentConfirmedResolution = true;
       }
 
       const newTicketId = await ticketService.createTicket(ticketPayload);
