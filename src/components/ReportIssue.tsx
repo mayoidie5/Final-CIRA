@@ -1,9 +1,9 @@
 import React, { useState, useEffect } from 'react';
 import { Upload, X, AlertCircle } from 'lucide-react';
 import { useTickets } from '../hooks/useTickets';
-import { DEFAULT_FORM_CONFIG } from '../utils/mockData';
-import { Campus, Building, Room } from '../types';
-import { ValidationAlert } from './ValidationAlert';
+import { getFormConfig } from '../services/formConfigService';
+import { DEFAULT_FORM_CONFIG } from '../utils/defaultFormConfig';
+import { Campus, Building, Room, FormConfig } from '../types';
 import { ConfirmDialog } from './ConfirmDialog';
 
 interface ReportIssueProps {
@@ -12,7 +12,8 @@ interface ReportIssueProps {
 
 export const ReportIssue: React.FC<ReportIssueProps> = ({ onSuccess }) => {
   const { createTicket } = useTickets();
-  const [formConfig] = useState(DEFAULT_FORM_CONFIG);
+  const [formConfig, setFormConfig] = useState<FormConfig>(DEFAULT_FORM_CONFIG);
+  const [isLoadingConfig, setIsLoadingConfig] = useState(true);
   
   const [formData, setFormData] = useState({
     campus: '',
@@ -30,10 +31,27 @@ export const ReportIssue: React.FC<ReportIssueProps> = ({ onSuccess }) => {
   const [availableRooms, setAvailableRooms] = useState<Room[]>([]);
   const [availableUnitIds, setAvailableUnitIds] = useState<string[]>([]);
   const [availableSubtypes, setAvailableSubtypes] = useState<string[]>([]);
-  const [error, setError] = useState('');
-  const [success, setSuccess] = useState(false);
   const [validationError, setValidationError] = useState('');
-  const [confirmSubmit, setConfirmSubmit] = useState(false);
+  const [success, setSuccess] = useState(false);
+
+  useEffect(() => {
+    // Load form config from Firestore
+    const loadFormConfig = async () => {
+      try {
+        setIsLoadingConfig(true);
+        const config = await getFormConfig(DEFAULT_FORM_CONFIG);
+        setFormConfig(config);
+      } catch (error) {
+        console.error('Error loading form config:', error);
+        // Use default config on error
+        setFormConfig(DEFAULT_FORM_CONFIG);
+      } finally {
+        setIsLoadingConfig(false);
+      }
+    };
+
+    loadFormConfig();
+  }, []);
 
   useEffect(() => {
     if (formData.campus) {
@@ -41,7 +59,7 @@ export const ReportIssue: React.FC<ReportIssueProps> = ({ onSuccess }) => {
       setAvailableBuildings(campus?.buildings || []);
       setFormData(prev => ({ ...prev, building: '', room: '', unitId: '' }));
     }
-  }, [formData.campus]);
+  }, [formData.campus, formConfig]);
 
   useEffect(() => {
     if (formData.building) {
@@ -93,51 +111,60 @@ export const ReportIssue: React.FC<ReportIssueProps> = ({ onSuccess }) => {
     setImages(prev => prev.filter((_, i) => i !== index));
   };
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    setError('');
     setSuccess(false);
+    setValidationError('');
 
     if (!formData.campus || !formData.building || !formData.room || !formData.unitId || 
         !formData.issueType || !formData.issueSubtype || !formData.issueDescription) {
-      setError('Please fill in all required fields');
+      setValidationError('Please fill in all required fields');
       return;
     }
 
     if (formData.issueSubtype === 'Others' && !formData.otherIssueSubtype) {
-      setError('Please specify the issue subtype');
+      setValidationError('Please specify the issue subtype');
       return;
     }
 
-    const issueSubtype = formData.issueSubtype === 'Others' ? formData.otherIssueSubtype : formData.issueSubtype;
+    try {
+      const issueSubtype = formData.issueSubtype === 'Others' ? formData.otherIssueSubtype : formData.issueSubtype;
 
-    createTicket({
-      campus: formData.campus,
-      building: formData.building,
-      room: formData.room,
-      unitId: formData.unitId,
-      issueType: formData.issueType,
-      issueSubtype,
-      issueDescription: formData.issueDescription,
-      images,
-    });
+      // Wait for ticket to be created
+      await createTicket({
+        campus: formData.campus,
+        building: formData.building,
+        room: formData.room,
+        unitId: formData.unitId,
+        issueType: formData.issueType,
+        issueSubtype,
+        issueDescription: formData.issueDescription,
+        images,
+      });
 
-    setSuccess(true);
-    setFormData({
-      campus: '',
-      building: '',
-      room: '',
-      unitId: '',
-      issueType: '',
-      issueSubtype: '',
-      issueDescription: '',
-      otherIssueSubtype: '',
-    });
-    setImages([]);
+      // Only show success and redirect if ticket was successfully created
+      setSuccess(true);
+      setFormData({
+        campus: '',
+        building: '',
+        room: '',
+        unitId: '',
+        issueType: '',
+        issueSubtype: '',
+        issueDescription: '',
+        otherIssueSubtype: '',
+      });
+      setImages([]);
 
-    setTimeout(() => {
-      onSuccess();
-    }, 2000);
+      // Wait a bit to show success message, then redirect
+      setTimeout(() => {
+        onSuccess();
+      }, 2000);
+    } catch (err) {
+      const errorMessage = err instanceof Error ? err.message : 'Failed to submit ticket';
+      console.error('❌ Error submitting ticket:', errorMessage);
+      setValidationError(errorMessage);
+    }
   };
 
   return (
@@ -311,10 +338,10 @@ export const ReportIssue: React.FC<ReportIssueProps> = ({ onSuccess }) => {
             )}
           </div>
 
-          {error && (
+          {validationError && (
             <div className="flex items-center gap-2 p-3 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-lg text-red-600 dark:text-red-400">
               <AlertCircle size={20} />
-              <span>{error}</span>
+              <span>{validationError}</span>
             </div>
           )}
 
@@ -353,26 +380,6 @@ export const ReportIssue: React.FC<ReportIssueProps> = ({ onSuccess }) => {
           </div>
         </form>
       </div>
-
-      {/* Validation Alert */}
-      {validationError && (
-        <ValidationAlert
-          message={validationError}
-          onClose={() => setValidationError('')}
-        />
-      )}
-
-      {/* Submit Confirmation Dialog */}
-      {confirmSubmit && (
-        <ConfirmDialog
-          title="Submit Issue Report"
-          message="Are you sure you want to submit this issue report? Please make sure all information is correct."
-          confirmText="Submit"
-          onConfirm={confirmSubmitTicket}
-          onCancel={() => setConfirmSubmit(false)}
-          type="info"
-        />
-      )}
     </div>
   );
 };

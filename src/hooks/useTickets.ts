@@ -1,169 +1,243 @@
 import { useState, useEffect } from 'react';
-import { Ticket, Notification } from '../types';
+import { Ticket } from '../types';
 import { useAuth } from '../contexts/AuthContext';
+import { useNotifications } from '../contexts/NotificationContext';
+import * as ticketService from '../services/ticketService';
 
 export const useTickets = () => {
   const { user } = useAuth();
+  const { addNotification, fetchNotifications } = useNotifications();
   const [tickets, setTickets] = useState<Ticket[]>([]);
-  const [notifications, setNotifications] = useState<Notification[]>([]);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
     loadTickets();
-    loadNotifications();
-  }, [user]);
+    if (user?.id) {
+      fetchNotifications(user.id);
+    }
+  }, [user?.id]);
 
-  const loadTickets = () => {
-    const stored = localStorage.getItem('tickets');
-    if (stored) {
-      setTickets(JSON.parse(stored));
+  const loadTickets = async () => {
+    if (!user?.id) return;
+    
+    try {
+      setLoading(true);
+      setError(null);
+      console.log('📋 Loading tickets for user:', user.id);
+      
+      const allTickets = await ticketService.getAllTickets();
+      setTickets(allTickets);
+      
+      console.log('✅ Loaded', allTickets.length, 'tickets');
+    } catch (err) {
+      const errorMessage = err instanceof Error ? err.message : 'Failed to load tickets';
+      console.error('❌ Error loading tickets:', errorMessage);
+      setError(errorMessage);
+    } finally {
+      setLoading(false);
     }
   };
 
-  const loadNotifications = () => {
-    if (!user) return;
-    const stored = localStorage.getItem('notifications');
-    if (stored) {
-      const allNotifications = JSON.parse(stored);
-      setNotifications(allNotifications.filter((n: Notification) => n.userId === user.id));
+  const createTicket = async (
+    ticketData: Omit<Ticket, 'id' | 'userId' | 'status' | 'createdAt' | 'updatedAt'>
+  ): Promise<string> => {
+    if (!user) {
+      throw new Error('User not authenticated');
+    }
+
+    try {
+      setError(null);
+      console.log('📝 Creating new ticket');
+
+      // Create ticket in Firestore
+      const ticketPayload: any = {
+        ...ticketData,
+        userId: user.id,
+        status: 'submitted',
+      };
+
+      // Only add acceptedBy if user is class_rep
+      if (user.role === 'class_rep') {
+        ticketPayload.acceptedBy = user.id;
+      }
+
+      const newTicketId = await ticketService.createTicket(ticketPayload);
+
+      // Reload tickets to reflect changes
+      await loadTickets();
+
+      // Add notification to the user
+      await addNotification(
+        user.id,
+        newTicketId,
+        `✅ Your ticket has been submitted successfully`,
+        `/tickets/${newTicketId}`
+      );
+
+      console.log('✅ Ticket created with ID:', newTicketId);
+      return newTicketId;
+    } catch (err) {
+      const errorMessage = err instanceof Error ? err.message : 'Failed to create ticket';
+      console.error('❌ Error creating ticket:', errorMessage);
+      setError(errorMessage);
+      throw err;
     }
   };
 
-  const createTicket = (ticketData: Omit<Ticket, 'id' | 'userId' | 'status' | 'createdAt' | 'updatedAt'>) => {
-    if (!user) return;
+  const updateTicket = async (ticketId: string, updates: Partial<Ticket>) => {
+    try {
+      setError(null);
+      console.log('📝 Updating ticket:', ticketId);
 
-    // Auto-approve tickets from class reps
-    const isClassRep = user.role === 'class_rep';
+      await ticketService.updateTicket(ticketId, updates);
 
-    const newTicket: Ticket = {
-      ...ticketData,
-      id: Date.now().toString(),
-      userId: user.id,
-      status: 'submitted',
-      acceptedBy: isClassRep ? user.id : undefined,
-      createdAt: new Date().toISOString(),
-      updatedAt: new Date().toISOString(),
-    };
+      // Reload tickets
+      await loadTickets();
 
-    const updatedTickets = [...tickets, newTicket];
-    setTickets(updatedTickets);
-    localStorage.setItem('tickets', JSON.stringify(updatedTickets));
-
-    // Notify class reps only if submitted by student
-    if (!isClassRep) {
-      notifyClassReps(`New ticket submitted: ${newTicket.issueType} - ${newTicket.room}`, newTicket.id);
-    } else {
-      // Notify admins if class rep creates a ticket
-      notifyAdmin(`Class rep submitted ticket: ${newTicket.issueType} - ${newTicket.room}`, newTicket.id);
-    }
-  };
-
-  const updateTicket = (ticketId: string, updates: Partial<Ticket>) => {
-    const updatedTickets = tickets.map(t => 
-      t.id === ticketId 
-        ? { ...t, ...updates, updatedAt: new Date().toISOString() }
-        : t
-    );
-    setTickets(updatedTickets);
-    localStorage.setItem('tickets', JSON.stringify(updatedTickets));
-
-    const ticket = tickets.find(t => t.id === ticketId);
-    if (ticket) {
       // Notify relevant users
       if (updates.status) {
-        createNotification(ticket.userId, ticketId, `Ticket status updated to: ${updates.status}`);
-        if (ticket.acceptedBy) {
-          createNotification(ticket.acceptedBy, ticketId, `Ticket status updated to: ${updates.status}`);
+        const ticket = tickets.find(t => t.id === ticketId);
+        if (ticket) {
+          await addNotification(
+            ticket.userId,
+            ticketId,
+            `🔄 Ticket status updated to: ${updates.status}`,
+            `/tickets/${ticketId}`
+          );
+          if (ticket.acceptedBy) {
+            await addNotification(
+              ticket.acceptedBy,
+              ticketId,
+              `🔄 Ticket status updated to: ${updates.status}`,
+              `/tickets/${ticketId}`
+            );
+          }
         }
       }
+
+      console.log('✅ Ticket updated:', ticketId);
+    } catch (err) {
+      const errorMessage = err instanceof Error ? err.message : 'Failed to update ticket';
+      console.error('❌ Error updating ticket:', errorMessage);
+      setError(errorMessage);
+      throw err;
     }
   };
 
-  const deleteTicket = (ticketId: string) => {
-    const updatedTickets = tickets.filter(t => t.id !== ticketId);
-    setTickets(updatedTickets);
-    localStorage.setItem('tickets', JSON.stringify(updatedTickets));
-  };
+  const deleteTicket = async (ticketId: string): Promise<void> => {
+    try {
+      setError(null);
+      console.log('🗑️  Deleting ticket:', ticketId);
 
-  const createNotification = (userId: string, ticketId: string, message: string, targetPage?: string) => {
-    const newNotification: Notification = {
-      id: Date.now().toString() + Math.random(),
-      userId,
-      ticketId,
-      message,
-      isRead: false,
-      targetPage,
-      createdAt: new Date().toISOString(),
-    };
+      await ticketService.deleteTicket(ticketId);
 
-    const allNotifications = JSON.parse(localStorage.getItem('notifications') || '[]');
-    allNotifications.push(newNotification);
-    localStorage.setItem('notifications', JSON.stringify(allNotifications));
+      // Reload tickets
+      await loadTickets();
 
-    if (userId === user?.id) {
-      setNotifications([...notifications, newNotification]);
+      console.log('✅ Ticket deleted:', ticketId);
+    } catch (err) {
+      const errorMessage = err instanceof Error ? err.message : 'Failed to delete ticket';
+      console.error('❌ Error deleting ticket:', errorMessage);
+      setError(errorMessage);
+      throw err;
     }
   };
 
-  const notifyClassReps = (message: string, ticketId: string) => {
-    const users = JSON.parse(localStorage.getItem('users') || '[]');
-    const classReps = users.filter((u: any) => u.role === 'class_rep' && u.isVerified);
-    
-    classReps.forEach((rep: any) => {
-      createNotification(rep.id, ticketId, message);
-    });
+  const notifyClassReps = async (message: string, ticketId: string) => {
+    try {
+      console.log('📢 Notifying class reps:', message);
+      // In a real implementation, query all class reps from Firestore
+      // For now, we'll just log
+      await addNotification('admin', ticketId, message);
+    } catch (err) {
+      console.error('❌ Error notifying class reps:', err);
+    }
   };
 
-  const notifyAdmin = (message: string, ticketId: string) => {
-    const users = JSON.parse(localStorage.getItem('users') || '[]');
-    const admins = users.filter((u: any) => u.role === 'admin');
-    
-    admins.forEach((admin: any) => {
-      createNotification(admin.id, ticketId, message);
-    });
+  const notifyAdmin = async (message: string, ticketId: string) => {
+    try {
+      console.log('📢 Notifying admin:', message);
+      // In a real implementation, query all admins from Firestore
+      await addNotification('admin', ticketId, message);
+    } catch (err) {
+      console.error('❌ Error notifying admin:', err);
+    }
   };
 
-  const markNotificationAsRead = (notificationId: string) => {
-    const allNotifications = JSON.parse(localStorage.getItem('notifications') || '[]');
-    const updated = allNotifications.map((n: Notification) => 
-      n.id === notificationId ? { ...n, isRead: true } : n
-    );
-    localStorage.setItem('notifications', JSON.stringify(updated));
-    
-    setNotifications(notifications.map(n => 
-      n.id === notificationId ? { ...n, isRead: true } : n
-    ));
+  const addCommentToTicket = async (
+    ticketId: string,
+    comment: Omit<any, 'id' | 'createdAt'>
+  ): Promise<string> => {
+    try {
+      setError(null);
+      console.log('💬 Adding comment to ticket:', ticketId);
+
+      const commentId = await ticketService.addCommentToTicket(ticketId, comment);
+
+      // Reload tickets
+      await loadTickets();
+
+      return commentId;
+    } catch (err) {
+      const errorMessage = err instanceof Error ? err.message : 'Failed to add comment';
+      console.error('❌ Error adding comment:', errorMessage);
+      setError(errorMessage);
+      throw err;
+    }
   };
 
-  const markAllNotificationsAsRead = () => {
-    const allNotifications = JSON.parse(localStorage.getItem('notifications') || '[]');
-    const updated = allNotifications.map((n: Notification) => 
-      n.userId === user?.id ? { ...n, isRead: true } : n
-    );
-    localStorage.setItem('notifications', JSON.stringify(updated));
-    
-    setNotifications(notifications.map(n => ({ ...n, isRead: true })));
+  const getTicketById = async (ticketId: string): Promise<Ticket | null> => {
+    try {
+      setError(null);
+      return await ticketService.getTicketById(ticketId);
+    } catch (err) {
+      const errorMessage = err instanceof Error ? err.message : 'Failed to fetch ticket';
+      console.error('❌ Error fetching ticket:', errorMessage);
+      setError(errorMessage);
+      throw err;
+    }
   };
 
-  const clearAllNotifications = () => {
-    const allNotifications = JSON.parse(localStorage.getItem('notifications') || '[]');
-    const filtered = allNotifications.filter((n: Notification) => n.userId !== user?.id);
-    localStorage.setItem('notifications', JSON.stringify(filtered));
-    setNotifications([]);
+  const getUserTickets = async (): Promise<Ticket[]> => {
+    if (!user?.id) return [];
+    
+    try {
+      setError(null);
+      return await ticketService.getUserTickets(user.id);
+    } catch (err) {
+      const errorMessage = err instanceof Error ? err.message : 'Failed to fetch user tickets';
+      console.error('❌ Error fetching user tickets:', errorMessage);
+      setError(errorMessage);
+      return [];
+    }
+  };
+
+  const getTicketsByStatus = async (status: string): Promise<Ticket[]> => {
+    try {
+      setError(null);
+      return await ticketService.getTicketsByStatus(status);
+    } catch (err) {
+      const errorMessage = err instanceof Error ? err.message : 'Failed to fetch tickets by status';
+      console.error('❌ Error fetching tickets by status:', errorMessage);
+      setError(errorMessage);
+      return [];
+    }
   };
 
   return {
     tickets,
-    notifications,
+    loading,
+    error,
     createTicket,
     updateTicket,
     deleteTicket,
-    createNotification,
+    loadTickets,
     notifyClassReps,
     notifyAdmin,
-    markNotificationAsRead,
-    markAllNotificationsAsRead,
-    clearAllNotifications,
-    loadTickets,
-    loadNotifications,
+    addCommentToTicket,
+    getTicketById,
+    getUserTickets,
+    getTicketsByStatus,
   };
 };

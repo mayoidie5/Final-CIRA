@@ -3,13 +3,16 @@ import { Search, Filter, Eye, FileText, X } from 'lucide-react';
 import { useAuth } from '../contexts/AuthContext';
 import { useTickets } from '../hooks/useTickets';
 import { Ticket, FormConfig } from '../types';
+import { getFormConfig } from '../services/formConfigService';
+import { DEFAULT_FORM_CONFIG } from '../utils/defaultFormConfig';
 import { TicketDetails } from './TicketDetails';
 
 interface TicketListProps {
   view?: 'my-tickets' | 'review' | 'all';
+  selectedTicketId?: string | null;
 }
 
-export const TicketList: React.FC<TicketListProps> = ({ view = 'all' }) => {
+export const TicketList: React.FC<TicketListProps> = ({ view = 'all', selectedTicketId }) => {
   const { user } = useAuth();
   const { tickets } = useTickets();
   const [searchTerm, setSearchTerm] = useState('');
@@ -23,13 +26,34 @@ export const TicketList: React.FC<TicketListProps> = ({ view = 'all' }) => {
   const [showFilters, setShowFilters] = useState(false);
   const [selectedTicket, setSelectedTicket] = useState<Ticket | null>(null);
   const [formConfig, setFormConfig] = useState<FormConfig | null>(null);
+  const [isLoadingConfig, setIsLoadingConfig] = useState(true);
 
   useEffect(() => {
-    const stored = localStorage.getItem('formConfig');
-    if (stored) {
-      setFormConfig(JSON.parse(stored));
-    }
+    const loadFormConfig = async () => {
+      try {
+        setIsLoadingConfig(true);
+        const config = await getFormConfig(DEFAULT_FORM_CONFIG);
+        setFormConfig(config);
+      } catch (error) {
+        console.error('Error loading form config:', error);
+        setFormConfig(DEFAULT_FORM_CONFIG);
+      } finally {
+        setIsLoadingConfig(false);
+      }
+    };
+
+    loadFormConfig();
   }, []);
+
+  // Auto-select ticket if selectedTicketId is provided
+  useEffect(() => {
+    if (selectedTicketId && tickets.length > 0) {
+      const ticket = tickets.find(t => t.id === selectedTicketId);
+      if (ticket) {
+        setSelectedTicket(ticket);
+      }
+    }
+  }, [selectedTicketId, tickets]);
 
   const getUserTickets = () => {
     let userTickets = tickets;

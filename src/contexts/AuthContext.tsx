@@ -1,6 +1,5 @@
 import React, { createContext, useContext, useState, useEffect } from 'react';
 import { User } from '../types';
-import { MOCK_USERS, MOCK_PASSWORDS } from '../utils/mockData';
 import { initializeAdminAccount } from '../utils/initAdmin';
 import { sendVerificationEmail } from '../utils/emailService';
 import { auth, db } from '../config/firebase';
@@ -155,7 +154,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       await setDoc(doc(db, 'users', firebaseUser.uid), newUser);
 
       // Also save to localStorage for backup
-      const users = JSON.parse(localStorage.getItem('users') || JSON.stringify(MOCK_USERS));
+      const users = JSON.parse(localStorage.getItem('users') || '[]');
       users.push(newUser);
       localStorage.setItem('users', JSON.stringify(users));
 
