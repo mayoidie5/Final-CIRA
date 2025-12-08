@@ -2,7 +2,7 @@ import React, { useState, useRef, useEffect } from 'react';
 import { Bell, User, LogOut, Settings, Sun, Moon, Monitor, X, MonitorCheck, HelpCircle } from 'lucide-react';
 import { useAuth } from '../contexts/AuthContext';
 import { useTheme } from '../contexts/ThemeContext';
-import { useTickets } from '../hooks/useTickets';
+import { useNotifications } from '../contexts/NotificationContext';
 
 interface HeaderProps {
   onOpenSettings: () => void;
@@ -13,13 +13,11 @@ interface HeaderProps {
 export const Header: React.FC<HeaderProps> = ({ onOpenSettings, onNavigate, onOpenTutorial }) => {
   const { user, logout } = useAuth();
   const { theme, setTheme } = useTheme();
-  const { notifications, markNotificationAsRead, markAllNotificationsAsRead, clearAllNotifications } = useTickets();
+  const { notifications, unreadCount, markAsRead, markAllAsRead, deleteNotif } = useNotifications();
   const [showProfileMenu, setShowProfileMenu] = useState(false);
   const [showNotifications, setShowNotifications] = useState(false);
   const profileRef = useRef<HTMLDivElement>(null);
   const notificationRef = useRef<HTMLDivElement>(null);
-
-  const unreadCount = notifications.filter(n => !n.isRead).length;
 
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
@@ -43,16 +41,28 @@ export const Header: React.FC<HeaderProps> = ({ onOpenSettings, onNavigate, onOp
     }
   };
 
-  const handleNotificationClick = (notification: any) => {
-    markNotificationAsRead(notification.id);
-    if (notification.targetPage && onNavigate) {
-      onNavigate(notification.targetPage);
-      setShowNotifications(false);
+  const handleNotificationClick = async (notification: any) => {
+    try {
+      await markAsRead(notification.id);
+      if (notification.targetPage && onNavigate) {
+        // Extract the page and ID from the targetPage (e.g., "/tickets/123" -> navigate to ticket details)
+        if (notification.targetPage.startsWith('/tickets/')) {
+          // For ticket notifications, we navigate to a specific ticket
+          // Store the ticket ID to be displayed and navigate to tickets view
+          onNavigate(`tickets/${notification.ticketId}`);
+        } else {
+          // For other pages, just navigate directly
+          onNavigate(notification.targetPage);
+        }
+        setShowNotifications(false);
+      }
+    } catch (error) {
+      console.error('Error marking notification as read:', error);
     }
   };
 
   return (
-    <header className="bg-white dark:bg-gray-800 shadow-sm border-b border-gray-200 dark:border-gray-700">
+    <header className="sticky top-0 z-50 bg-white dark:bg-gray-800 shadow-sm border-b border-gray-200 dark:border-gray-700">
       <div className="w-full px-4 sm:px-6 lg:px-8">
         <div className="flex items-center justify-between h-16">
           {/* Left side - Logo and Title */}
@@ -96,7 +106,15 @@ export const Header: React.FC<HeaderProps> = ({ onOpenSettings, onNavigate, onOp
                       <h3 className="text-gray-800 dark:text-white">Notifications</h3>
                       {unreadCount > 0 && (
                         <button
-                          onClick={markAllNotificationsAsRead}
+                          onClick={async () => {
+                            try {
+                              if (user?.id) {
+                                await markAllAsRead(user.id);
+                              }
+                            } catch (error) {
+                              console.error('Error marking all as read:', error);
+                            }
+                          }}
                           className="text-blue-600 dark:text-blue-400 hover:underline text-sm"
                         >
                           Mark all as read
@@ -106,13 +124,18 @@ export const Header: React.FC<HeaderProps> = ({ onOpenSettings, onNavigate, onOp
                     {notifications.length > 0 && (
                       <button
                         onClick={() => {
-                          if (confirm('Are you sure you want to clear all notifications?')) {
-                            clearAllNotifications();
+                          if (confirm('Are you sure you want to delete all notifications?')) {
+                            if (user?.id) {
+                              // Delete all notifications one by one
+                              notifications.forEach(notif => {
+                                deleteNotif(notif.id).catch(err => console.error('Error deleting notification:', err));
+                              });
+                            }
                           }
                         }}
                         className="text-red-600 dark:text-red-400 hover:underline text-sm"
                       >
-                        Clear All Notifications
+                        Delete All Notifications
                       </button>
                     )}
                   </div>

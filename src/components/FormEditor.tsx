@@ -1,7 +1,8 @@
 import React, { useState, useEffect } from 'react';
 import { Plus, X, Save, Edit2, Trash2, GripVertical, ChevronUp, ChevronDown } from 'lucide-react';
 import { FormConfig } from '../types';
-import { DEFAULT_FORM_CONFIG } from '../utils/mockData';
+import { getFormConfig, setFormConfig as saveFormConfig } from '../services/formConfigService';
+import { DEFAULT_FORM_CONFIG } from '../utils/defaultFormConfig';
 import { FormDialog } from './FormDialog';
 import { ConfirmDialog } from './ConfirmDialog';
 import { SuccessToast } from './SuccessToast';
@@ -15,14 +16,27 @@ export const FormEditor: React.FC = () => {
   const [draggedItem, setDraggedItem] = useState<{ type: string; index: number; parentIndices?: number[] } | null>(null);
   const [showSaveConfirm, setShowSaveConfirm] = useState(false);
   const [showSuccessToast, setShowSuccessToast] = useState(false);
+  const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
-    const stored = localStorage.getItem('formConfig');
-    if (stored) {
-      const config = JSON.parse(stored);
-      setFormConfig(config);
-      setOriginalConfig(config);
-    }
+    // Load form config from Firestore
+    const loadFormConfig = async () => {
+      try {
+        setIsLoading(true);
+        const config = await getFormConfig(DEFAULT_FORM_CONFIG);
+        setFormConfig(config);
+        setOriginalConfig(config);
+      } catch (error) {
+        console.error('Error loading form config:', error);
+        // Use default config on error
+        setFormConfig(DEFAULT_FORM_CONFIG);
+        setOriginalConfig(DEFAULT_FORM_CONFIG);
+      } finally {
+        setIsLoading(false);
+      }
+    };
+
+    loadFormConfig();
   }, []);
 
   useEffect(() => {
@@ -34,13 +48,18 @@ export const FormEditor: React.FC = () => {
     setShowSaveConfirm(true);
   };
 
-  const confirmSave = () => {
-    localStorage.setItem('formConfig', JSON.stringify(formConfig));
-    setOriginalConfig(formConfig);
-    setHasChanges(false);
-    setShowSaveConfirm(false);
-    setShowSuccessToast(true);
-    setEditMode(false);
+  const confirmSave = async () => {
+    try {
+      await saveFormConfig(formConfig);
+      setOriginalConfig(formConfig);
+      setHasChanges(false);
+      setShowSaveConfirm(false);
+      setShowSuccessToast(true);
+      setEditMode(false);
+    } catch (error) {
+      console.error('Error saving form config:', error);
+      alert('Failed to save configuration. Please try again.');
+    }
   };
 
   const cancelEdit = () => {

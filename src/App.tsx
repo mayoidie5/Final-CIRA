@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { AuthProvider, useAuth } from './contexts/AuthContext';
 import { ThemeProvider } from './contexts/ThemeContext';
+import { NotificationProvider } from './contexts/NotificationContext';
 import { SignIn } from './components/SignIn';
 import { SignUp } from './components/SignUp';
 import { Header } from './components/Header';
@@ -14,13 +15,12 @@ import { Archive } from './components/Archive';
 import { Settings } from './components/Settings';
 import { Tutorial } from './components/Tutorial';
 import { LayoutDashboard, FileText, Plus, Users, Edit, Archive as ArchiveIcon, Menu, X, HelpCircle } from 'lucide-react';
-import { MOCK_USERS, MOCK_PASSWORDS, DEFAULT_FORM_CONFIG } from './utils/mockData';
-import { SAMPLE_TICKETS } from './utils/sampleData';
 
 const AppContent: React.FC = () => {
   const { user } = useAuth();
   const [authView, setAuthView] = useState<'signin' | 'signup'>('signin');
   const [currentPage, setCurrentPage] = useState('dashboard');
+  const [selectedTicketId, setSelectedTicketId] = useState<string | null>(null);
   const [showSettings, setShowSettings] = useState(false);
   const [showTutorial, setShowTutorial] = useState(false);
   const [sidebarOpen, setSidebarOpen] = useState(true);
@@ -28,9 +28,6 @@ const AppContent: React.FC = () => {
 
   // Initialize localStorage with required data on first load
   useEffect(() => {
-    if (!localStorage.getItem('formConfig')) {
-      localStorage.setItem('formConfig', JSON.stringify(DEFAULT_FORM_CONFIG));
-    }
     if (!localStorage.getItem('notifications')) {
       localStorage.setItem('notifications', JSON.stringify([]));
     }
@@ -76,6 +73,19 @@ const AppContent: React.FC = () => {
     }
   }
 
+  // Handle page navigation, with special handling for ticket URLs
+  const handleNavigate = (page: string) => {
+    if (page.startsWith('tickets/')) {
+      // Extract ticket ID from "tickets/{ticketId}"
+      const ticketId = page.split('/')[1];
+      setSelectedTicketId(ticketId);
+      setCurrentPage('tickets');
+    } else {
+      setSelectedTicketId(null);
+      setCurrentPage(page);
+    }
+  };
+
   const getNavItems = () => {
     if (user.role === 'admin') {
       return [
@@ -106,15 +116,15 @@ const AppContent: React.FC = () => {
   const renderPage = () => {
     switch (currentPage) {
       case 'dashboard':
-        return <Dashboard onNavigate={setCurrentPage} />;
+        return <Dashboard onNavigate={handleNavigate} />;
       case 'report':
         return <ReportIssue onSuccess={() => setCurrentPage('dashboard')} />;
       case 'tickets':
-        return <TicketList view="all" />;
+        return <TicketList view="all" selectedTicketId={selectedTicketId} />;
       case 'my-tickets':
-        return <TicketList view="my-tickets" />;
+        return <TicketList view="my-tickets" selectedTicketId={selectedTicketId} />;
       case 'review':
-        return <TicketList view="review" />;
+        return <TicketList view="review" selectedTicketId={selectedTicketId} />;
       case 'users':
         return <UserManagement />;
       case 'form-editor':
@@ -132,7 +142,7 @@ const AppContent: React.FC = () => {
     <div className="min-h-screen bg-gray-50 dark:bg-gray-900">
       <Header 
         onOpenSettings={() => setShowSettings(true)} 
-        onNavigate={setCurrentPage}
+        onNavigate={handleNavigate}
         onOpenTutorial={() => setShowTutorial(true)}
       />
 
@@ -215,7 +225,9 @@ export default function App() {
   return (
     <ThemeProvider>
       <AuthProvider>
-        <AppContent />
+        <NotificationProvider>
+          <AppContent />
+        </NotificationProvider>
       </AuthProvider>
     </ThemeProvider>
   );
