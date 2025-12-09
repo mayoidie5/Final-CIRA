@@ -13,6 +13,10 @@ export const useTickets = () => {
 
   useEffect(() => {
     loadTickets();
+    // Auto-delete resolved tickets older than 30 days
+    ticketService.autoDeleteResolvedTickets().catch(err => 
+      console.error('Auto-delete check failed:', err)
+    );
     if (user?.id) {
       fetchNotifications(user.id);
     }

@@ -1,11 +1,12 @@
 import React, { useState, useEffect } from 'react';
-import { Plus, X, Save, Edit2, Trash2, GripVertical, ChevronUp, ChevronDown } from 'lucide-react';
+import { Plus, X, Save, Edit2, Trash2, GripVertical, ChevronUp, ChevronDown, Eye, EyeOff } from 'lucide-react';
 import { FormConfig } from '../types';
 import { getFormConfig, setFormConfig as saveFormConfig } from '../services/formConfigService';
 import { DEFAULT_FORM_CONFIG } from '../utils/defaultFormConfig';
 import { FormDialog } from './FormDialog';
 import { ConfirmDialog } from './ConfirmDialog';
 import { SuccessToast } from './SuccessToast';
+import { Tabs, TabsList, TabsTrigger, TabsContent } from './ui/tabs';
 
 export const FormEditor: React.FC = () => {
   const [formConfig, setFormConfig] = useState<FormConfig>(DEFAULT_FORM_CONFIG);
@@ -17,6 +18,18 @@ export const FormEditor: React.FC = () => {
   const [showSaveConfirm, setShowSaveConfirm] = useState(false);
   const [showSuccessToast, setShowSuccessToast] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
+  const [expandedCampuses, setExpandedCampuses] = useState<Set<number>>(new Set());
+  const [expandedBuildings, setExpandedBuildings] = useState<Set<string>>(new Set());
+  const [expandedIssueTypes, setExpandedIssueTypes] = useState<Set<number>>(new Set());
+  const [showPreview, setShowPreview] = useState(false);
+  
+  // Preview form state
+  const [previewCampus, setPreviewCampus] = useState<string>('');
+  const [previewBuilding, setPreviewBuilding] = useState<string>('');
+  const [previewRoom, setPreviewRoom] = useState<string>('');
+  const [previewUnitId, setPreviewUnitId] = useState<string>('');
+  const [previewIssueType, setPreviewIssueType] = useState<string>('');
+  const [previewIssueSubtype, setPreviewIssueSubtype] = useState<string>('');
 
   useEffect(() => {
     // Load form config from Firestore
@@ -257,6 +270,52 @@ export const FormEditor: React.FC = () => {
     setDraggedItem(null);
   };
 
+  // Toggle campus expansion
+  const toggleCampusExpanded = (campusIndex: number) => {
+    const newExpanded = new Set(expandedCampuses);
+    if (newExpanded.has(campusIndex)) {
+      newExpanded.delete(campusIndex);
+    } else {
+      newExpanded.add(campusIndex);
+    }
+    setExpandedCampuses(newExpanded);
+  };
+
+  const isCampusExpanded = (campusIndex: number) => {
+    return expandedCampuses.has(campusIndex);
+  };
+
+  // Toggle building expansion
+  const toggleBuildingExpanded = (campusIndex: number, buildingIndex: number) => {
+    const key = `${campusIndex}-${buildingIndex}`;
+    const newExpanded = new Set(expandedBuildings);
+    if (newExpanded.has(key)) {
+      newExpanded.delete(key);
+    } else {
+      newExpanded.add(key);
+    }
+    setExpandedBuildings(newExpanded);
+  };
+
+  const isBuildingExpanded = (campusIndex: number, buildingIndex: number) => {
+    return expandedBuildings.has(`${campusIndex}-${buildingIndex}`);
+  };
+
+  // Toggle issue type expansion
+  const toggleIssueTypeExpanded = (issueTypeIndex: number) => {
+    const newExpanded = new Set(expandedIssueTypes);
+    if (newExpanded.has(issueTypeIndex)) {
+      newExpanded.delete(issueTypeIndex);
+    } else {
+      newExpanded.add(issueTypeIndex);
+    }
+    setExpandedIssueTypes(newExpanded);
+  };
+
+  const isIssueTypeExpanded = (issueTypeIndex: number) => {
+    return expandedIssueTypes.has(issueTypeIndex);
+  };
+
   return (
     <div className="max-w-7xl mx-auto p-4 sm:p-6 space-y-4 sm:space-y-6">
       <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 sm:gap-0">
@@ -265,6 +324,13 @@ export const FormEditor: React.FC = () => {
           <p className="text-gray-600 dark:text-gray-400 text-sm sm:text-base">Configure form options for issue reporting</p>
         </div>
         <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2 sm:gap-3 w-full sm:w-auto">
+          <button
+            onClick={() => setShowPreview(!showPreview)}
+            className="flex items-center justify-center gap-2 bg-purple-600 hover:bg-purple-700 text-white px-6 py-2 rounded-lg transition-colors"
+          >
+            {showPreview ? <EyeOff size={20} /> : <Eye size={20} />}
+            {showPreview ? 'Hide Preview' : 'Show Preview'}
+          </button>
           {!editMode ? (
             <button
               onClick={() => setEditMode(true)}
@@ -296,21 +362,39 @@ export const FormEditor: React.FC = () => {
         </div>
       </div>
 
-      {/* Campus and Location Configuration */}
+      {/* Tabbed Configuration Interface */}
       <div className={`bg-white dark:bg-gray-800 rounded-lg shadow border border-gray-200 dark:border-gray-700 ${!editMode ? 'opacity-60 pointer-events-none' : ''}`}>
-        <div className="p-4 sm:p-6 border-b border-gray-200 dark:border-gray-700 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
-          <h3 className="text-gray-800 dark:text-white">Campus & Location Configuration</h3>
-          <button
-            onClick={() => setShowDialog({ type: 'campus' })}
-            disabled={!editMode}
-            className="flex items-center justify-center gap-2 bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed w-full sm:w-auto"
-          >
-            <Plus size={18} />
-            Add Campus
-          </button>
-        </div>
+        <Tabs defaultValue="campus" className="w-full">
+          <TabsList className="w-full justify-start rounded-none border-b border-gray-200 dark:border-gray-700 bg-transparent p-0 h-auto">
+            <TabsTrigger 
+              value="campus"
+              className="rounded-none border-b-2 border-transparent data-[state=active]:border-blue-600 data-[state=active]:bg-transparent px-4 py-3"
+            >
+              Campus & Location
+            </TabsTrigger>
+            <TabsTrigger 
+              value="issues"
+              className="rounded-none border-b-2 border-transparent data-[state=active]:border-blue-600 data-[state=active]:bg-transparent px-4 py-3"
+            >
+              Issue Types
+            </TabsTrigger>
+          </TabsList>
 
-        <div className="p-4 sm:p-6 space-y-4 sm:space-y-6">
+          {/* Campus and Location Configuration Tab */}
+          <TabsContent value="campus" className="space-y-0">
+            <div className="p-4 sm:p-6 border-b border-gray-200 dark:border-gray-700 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
+              <h3 className="text-gray-800 dark:text-white">Campus & Location Configuration</h3>
+              <button
+                onClick={() => setShowDialog({ type: 'campus' })}
+                disabled={!editMode}
+                className="flex items-center justify-center gap-2 bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed w-full sm:w-auto"
+              >
+                <Plus size={18} />
+                Add Campus
+              </button>
+            </div>
+
+            <div className="p-4 sm:p-6 space-y-4 sm:space-y-6">
           {formConfig.campuses.map((campus, campusIndex) => (
             <div 
               key={campusIndex} 
@@ -321,9 +405,17 @@ export const FormEditor: React.FC = () => {
               className="border border-gray-200 dark:border-gray-700 rounded-lg p-3 sm:p-4 cursor-move hover:border-blue-400 dark:hover:border-blue-600 transition-colors"
             >
               <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 mb-4">
-                <div className="flex items-center gap-2">
+                <div 
+                  className="flex items-center gap-2 cursor-pointer flex-1 hover:opacity-70 transition-opacity"
+                  onClick={() => toggleCampusExpanded(campusIndex)}
+                >
                   <GripVertical className="text-gray-400" size={20} />
-                  <h4 className="text-gray-800 dark:text-white">{campus.name}</h4>
+                  {isCampusExpanded(campusIndex) ? (
+                    <ChevronDown className="text-gray-600 dark:text-gray-400" size={20} />
+                  ) : (
+                    <ChevronUp className="text-gray-600 dark:text-gray-400" size={20} />
+                  )}
+                  <h4 className="text-gray-800 dark:text-white font-semibold">{campus.name}</h4>
                 </div>
                 <div className="flex flex-wrap gap-2 w-full sm:w-auto">
                   <button
@@ -350,11 +442,22 @@ export const FormEditor: React.FC = () => {
                 </div>
               </div>
 
-              <div className="space-y-4 ml-0 sm:ml-6">
-                {campus.buildings.map((building, buildingIndex) => (
+              {isCampusExpanded(campusIndex) && (
+                <div className="space-y-4 ml-0 sm:ml-6">
+                  {campus.buildings.map((building, buildingIndex) => (
                   <div key={buildingIndex} className="border border-gray-200 dark:border-gray-700 rounded-lg p-3 sm:p-4 bg-gray-50 dark:bg-gray-900">
                     <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 mb-4">
-                      <h5 className="text-gray-800 dark:text-white">{building.name}</h5>
+                      <div 
+                        className="flex items-center gap-2 cursor-pointer flex-1 hover:opacity-70 transition-opacity"
+                        onClick={() => toggleBuildingExpanded(campusIndex, buildingIndex)}
+                      >
+                        {isBuildingExpanded(campusIndex, buildingIndex) ? (
+                          <ChevronDown className="text-gray-600 dark:text-gray-400" size={18} />
+                        ) : (
+                          <ChevronUp className="text-gray-600 dark:text-gray-400" size={18} />
+                        )}
+                        <h5 className="text-gray-800 dark:text-white font-semibold">{building.name}</h5>
+                      </div>
                       <div className="flex flex-wrap gap-2 w-full sm:w-auto">
                         <button
                           onClick={() => setShowDialog({ 
@@ -383,7 +486,8 @@ export const FormEditor: React.FC = () => {
                       </div>
                     </div>
 
-                    <div className="space-y-3 ml-0 sm:ml-6">
+                    {isBuildingExpanded(campusIndex, buildingIndex) && (
+                      <div className="space-y-3 ml-0 sm:ml-6">
                       {building.rooms.map((room, roomIndex) => (
                         <div key={roomIndex} className="border border-gray-200 dark:border-gray-700 rounded-lg p-3 bg-white dark:bg-gray-800">
                           <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 mb-3">
@@ -470,132 +574,325 @@ export const FormEditor: React.FC = () => {
                           </div>
                         </div>
                       ))}
-                    </div>
-                  </div>
-                ))}
-              </div>
-            </div>
-          ))}
-        </div>
-      </div>
-
-      {/* Issue Types Configuration */}
-      <div className={`bg-white dark:bg-gray-800 rounded-lg shadow border border-gray-200 dark:border-gray-700 ${!editMode ? 'opacity-60 pointer-events-none' : ''}`}>
-        <div className="p-4 sm:p-6 border-b border-gray-200 dark:border-gray-700 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
-          <h3 className="text-gray-800 dark:text-white">Issue Types Configuration</h3>
-          <button
-            onClick={() => setShowDialog({ type: 'issueType' })}
-            disabled={!editMode}
-            className="flex items-center justify-center gap-2 bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed w-full sm:w-auto"
-          >
-            <Plus size={18} />
-            Add Issue Type
-          </button>
-        </div>
-
-        <div className="p-4 sm:p-6 space-y-4">
-          {formConfig.issueTypes.map((issueType, issueTypeIndex) => (
-            <div 
-              key={issueTypeIndex} 
-              draggable
-              onDragStart={() => handleDragStart('issueType', issueTypeIndex)}
-              onDragOver={handleDragOver}
-              onDrop={() => handleDrop('issueType', issueTypeIndex)}
-              className="border border-gray-200 dark:border-gray-700 rounded-lg p-3 sm:p-4 cursor-move hover:border-blue-400 dark:hover:border-blue-600 transition-colors"
-            >
-              <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 mb-3">
-                <div className="flex items-center gap-2">
-                  <GripVertical className="text-gray-400" size={20} />
-                  <h4 className="text-gray-800 dark:text-white">{issueType.name}</h4>
-                </div>
-                <div className="flex flex-wrap gap-2 w-full sm:w-auto">
-                  <button
-                    onClick={() => setShowDialog({ 
-                      type: 'editIssueType', 
-                      data: { issueTypeIndex, name: issueType.name } 
-                    })}
-                    className="p-2 text-blue-600 dark:text-blue-400 hover:bg-blue-50 dark:hover:bg-blue-900/20 rounded transition-colors"
-                    title="Edit Issue Type"
-                  >
-                    <Edit2 size={16} />
-                  </button>
-                  <button
-                    onClick={() => deleteIssueType(issueTypeIndex)}
-                    className="p-2 text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-900/20 rounded transition-colors"
-                    title="Delete Issue Type"
-                  >
-                    <Trash2 size={16} />
-                  </button>
-                  <button
-                    onClick={() => setShowDialog({ type: 'subtype', data: { issueTypeIndex } })}
-                    className="flex items-center gap-2 bg-green-600 hover:bg-green-700 text-white px-3 py-1 rounded transition-colors flex-1 sm:flex-none justify-center"
-                  >
-                    <Plus size={16} />
-                    <span className="sm:inline">Add Subtype</span>
-                  </button>
-                </div>
-              </div>
-
-              <div className="flex flex-wrap gap-2">
-                {issueType.subtypes.map((subtype, subtypeIndex) => (
-                  <div
-                    key={subtypeIndex}
-                    draggable
-                    onDragStart={() => handleDragStart('subtype', subtypeIndex, [issueTypeIndex])}
-                    onDragOver={handleDragOver}
-                    onDrop={() => handleDrop('subtype', subtypeIndex, [issueTypeIndex])}
-                    className="flex items-center gap-1 px-3 py-1 bg-green-100 dark:bg-green-900/20 text-green-800 dark:text-green-400 rounded-full cursor-move hover:bg-green-200 dark:hover:bg-green-900/40 transition-colors"
-                  >
-                    <GripVertical size={12} className="text-green-600 dark:text-green-500" />
-                    <div className="flex gap-1">
-                      {subtypeIndex > 0 && (
-                        <button
-                          onClick={() => moveSubtype(issueTypeIndex, subtypeIndex, subtypeIndex - 1)}
-                          className="hover:text-green-600 dark:hover:text-green-300"
-                          title="Move Up"
-                        >
-                          <ChevronUp size={12} />
-                        </button>
-                      )}
-                      {subtypeIndex < issueType.subtypes.length - 1 && (
-                        <button
-                          onClick={() => moveSubtype(issueTypeIndex, subtypeIndex, subtypeIndex + 1)}
-                          className="hover:text-green-600 dark:hover:text-green-300"
-                          title="Move Down"
-                        >
-                          <ChevronDown size={12} />
-                        </button>
-                      )}
-                    </div>
-                    <span>{subtype}</span>
-                    {subtype !== 'Others' && (
-                      <>
-                        <button
-                          onClick={() => setShowDialog({ 
-                            type: 'editSubtype', 
-                            data: { issueTypeIndex, subtypeIndex, subtype } 
-                          })}
-                          className="hover:text-green-600 dark:hover:text-green-300"
-                          title="Edit"
-                        >
-                          <Edit2 size={12} />
-                        </button>
-                        <button
-                          onClick={() => deleteSubtype(issueTypeIndex, subtypeIndex)}
-                          className="hover:text-red-600 dark:hover:text-red-400"
-                          title="Delete"
-                        >
-                          <X size={14} />
-                        </button>
-                      </>
+                      </div>
                     )}
                   </div>
                 ))}
-              </div>
+                </div>
+              )}
             </div>
           ))}
-        </div>
+            </div>
+          </TabsContent>
+
+          {/* Issue Types Configuration Tab */}
+          <TabsContent value="issues" className="space-y-0">
+            <div className="p-4 sm:p-6 border-b border-gray-200 dark:border-gray-700 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
+              <h3 className="text-gray-800 dark:text-white">Issue Types Configuration</h3>
+              <button
+                onClick={() => setShowDialog({ type: 'issueType' })}
+                disabled={!editMode}
+                className="flex items-center justify-center gap-2 bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed w-full sm:w-auto"
+              >
+                <Plus size={18} />
+                Add Issue Type
+              </button>
+            </div>
+
+            <div className="p-4 sm:p-6 space-y-4">
+              {formConfig.issueTypes.map((issueType, issueTypeIndex) => (
+                <div 
+                  key={issueTypeIndex} 
+                  draggable
+                  onDragStart={() => handleDragStart('issueType', issueTypeIndex)}
+                  onDragOver={handleDragOver}
+                  onDrop={() => handleDrop('issueType', issueTypeIndex)}
+                  className="border border-gray-200 dark:border-gray-700 rounded-lg p-3 sm:p-4 cursor-move hover:border-blue-400 dark:hover:border-blue-600 transition-colors"
+                >
+                  <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 mb-3">
+                    <div 
+                      className="flex items-center gap-2 cursor-pointer flex-1 hover:opacity-70 transition-opacity"
+                      onClick={() => toggleIssueTypeExpanded(issueTypeIndex)}
+                    >
+                      <GripVertical className="text-gray-400" size={20} />
+                      {isIssueTypeExpanded(issueTypeIndex) ? (
+                        <ChevronDown className="text-gray-600 dark:text-gray-400" size={20} />
+                      ) : (
+                        <ChevronUp className="text-gray-600 dark:text-gray-400" size={20} />
+                      )}
+                      <h4 className="text-gray-800 dark:text-white font-semibold">{issueType.name}</h4>
+                    </div>
+                    <div className="flex flex-wrap gap-2 w-full sm:w-auto">
+                      <button
+                        onClick={() => setShowDialog({ 
+                          type: 'editIssueType', 
+                          data: { issueTypeIndex, name: issueType.name } 
+                        })}
+                        className="p-2 text-blue-600 dark:text-blue-400 hover:bg-blue-50 dark:hover:bg-blue-900/20 rounded transition-colors"
+                        title="Edit Issue Type"
+                      >
+                        <Edit2 size={16} />
+                      </button>
+                      <button
+                        onClick={() => deleteIssueType(issueTypeIndex)}
+                        className="p-2 text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-900/20 rounded transition-colors"
+                        title="Delete Issue Type"
+                      >
+                        <Trash2 size={16} />
+                      </button>
+                      <button
+                        onClick={() => setShowDialog({ type: 'subtype', data: { issueTypeIndex } })}
+                        className="flex items-center gap-2 bg-green-600 hover:bg-green-700 text-white px-3 py-1 rounded transition-colors flex-1 sm:flex-none justify-center"
+                      >
+                        <Plus size={16} />
+                        <span className="sm:inline">Add Subtype</span>
+                      </button>
+                    </div>
+                  </div>
+
+                  {isIssueTypeExpanded(issueTypeIndex) && (
+                    <div className="flex flex-wrap gap-2">
+                      {issueType.subtypes.map((subtype, subtypeIndex) => (
+                      <div
+                        key={subtypeIndex}
+                        draggable
+                        onDragStart={() => handleDragStart('subtype', subtypeIndex, [issueTypeIndex])}
+                        onDragOver={handleDragOver}
+                        onDrop={() => handleDrop('subtype', subtypeIndex, [issueTypeIndex])}
+                        className="flex items-center gap-1 px-3 py-1 bg-green-100 dark:bg-green-900/20 text-green-800 dark:text-green-400 rounded-full cursor-move hover:bg-green-200 dark:hover:bg-green-900/40 transition-colors"
+                      >
+                        <GripVertical size={12} className="text-green-600 dark:text-green-500" />
+                        <div className="flex gap-1">
+                          {subtypeIndex > 0 && (
+                            <button
+                              onClick={() => moveSubtype(issueTypeIndex, subtypeIndex, subtypeIndex - 1)}
+                              className="hover:text-green-600 dark:hover:text-green-300"
+                              title="Move Up"
+                            >
+                              <ChevronUp size={12} />
+                            </button>
+                          )}
+                          {subtypeIndex < issueType.subtypes.length - 1 && (
+                            <button
+                              onClick={() => moveSubtype(issueTypeIndex, subtypeIndex, subtypeIndex + 1)}
+                              className="hover:text-green-600 dark:hover:text-green-300"
+                              title="Move Down"
+                            >
+                              <ChevronDown size={12} />
+                            </button>
+                          )}
+                        </div>
+                        <span>{subtype}</span>
+                        {subtype !== 'Others' && (
+                          <>
+                            <button
+                              onClick={() => setShowDialog({ 
+                                type: 'editSubtype', 
+                                data: { issueTypeIndex, subtypeIndex, subtype } 
+                              })}
+                              className="hover:text-green-600 dark:hover:text-green-300"
+                              title="Edit"
+                            >
+                              <Edit2 size={12} />
+                            </button>
+                            <button
+                              onClick={() => deleteSubtype(issueTypeIndex, subtypeIndex)}
+                              className="hover:text-red-600 dark:hover:text-red-400"
+                              title="Delete"
+                            >
+                              <X size={14} />
+                            </button>
+                          </>
+                        )}
+                      </div>
+                    ))}
+                    </div>
+                  )}
+                </div>
+              ))}
+            </div>
+          </TabsContent>
+        </Tabs>
       </div>
+
+      {/* Form Preview */}
+      {showPreview && (
+        <div className="bg-white dark:bg-gray-800 rounded-lg shadow border border-gray-200 dark:border-gray-700">
+          <div className="p-4 sm:p-6 border-b border-gray-200 dark:border-gray-700 flex items-center justify-between">
+            <div>
+              <h3 className="text-gray-800 dark:text-white font-semibold">Form Preview</h3>
+              <p className="text-gray-600 dark:text-gray-400 text-sm mt-1">Interactive preview - select options to see dependent fields update</p>
+            </div>
+            <button
+              onClick={() => {
+                setPreviewCampus('');
+                setPreviewBuilding('');
+                setPreviewRoom('');
+                setPreviewUnitId('');
+                setPreviewIssueType('');
+                setPreviewIssueSubtype('');
+              }}
+              className="px-4 py-2 text-sm bg-gray-500 hover:bg-gray-600 text-white rounded transition-colors"
+            >
+              Reset
+            </button>
+          </div>
+
+          <div className="p-4 sm:p-6 space-y-6">
+            {/* Campus Selection */}
+            <div>
+              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                Campus *
+              </label>
+              <select 
+                value={previewCampus} 
+                onChange={(e) => {
+                  setPreviewCampus(e.target.value);
+                  setPreviewBuilding('');
+                  setPreviewRoom('');
+                  setPreviewUnitId('');
+                }}
+                className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-800 dark:text-white focus:ring-2 focus:ring-blue-500"
+              >
+                <option value="">Select a campus</option>
+                {formConfig.campuses.map((campus, idx) => (
+                  <option key={idx} value={campus.name}>{campus.name}</option>
+                ))}
+              </select>
+            </div>
+
+            {/* Building Selection */}
+            {previewCampus && (
+              <div>
+                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                  Building *
+                </label>
+                <select 
+                  value={previewBuilding} 
+                  onChange={(e) => {
+                    setPreviewBuilding(e.target.value);
+                    setPreviewRoom('');
+                    setPreviewUnitId('');
+                  }}
+                  className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-800 dark:text-white focus:ring-2 focus:ring-blue-500"
+                >
+                  <option value="">Select a building</option>
+                  {formConfig.campuses.find(c => c.name === previewCampus)?.buildings.map((building, idx) => (
+                    <option key={idx} value={building.name}>{building.name}</option>
+                  ))}
+                </select>
+              </div>
+            )}
+
+            {/* Room Selection */}
+            {previewBuilding && (
+              <div>
+                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                  Room *
+                </label>
+                <select 
+                  value={previewRoom} 
+                  onChange={(e) => {
+                    setPreviewRoom(e.target.value);
+                    setPreviewUnitId('');
+                  }}
+                  className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-800 dark:text-white focus:ring-2 focus:ring-blue-500"
+                >
+                  <option value="">Select a room</option>
+                  {formConfig.campuses.find(c => c.name === previewCampus)?.buildings.find(b => b.name === previewBuilding)?.rooms.map((room, idx) => (
+                    <option key={idx} value={room.name}>{room.name}</option>
+                  ))}
+                </select>
+              </div>
+            )}
+
+            {/* Unit ID Selection */}
+            {previewRoom && (
+              <div>
+                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                  Unit ID *
+                </label>
+                <select 
+                  value={previewUnitId} 
+                  onChange={(e) => setPreviewUnitId(e.target.value)}
+                  className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-800 dark:text-white focus:ring-2 focus:ring-blue-500"
+                >
+                  <option value="">Select a unit ID</option>
+                  {formConfig.campuses.find(c => c.name === previewCampus)?.buildings.find(b => b.name === previewBuilding)?.rooms.find(r => r.name === previewRoom)?.unitIds.map((unitId, idx) => (
+                    <option key={idx} value={unitId}>{unitId}</option>
+                  ))}
+                </select>
+              </div>
+            )}
+
+            {/* Issue Type Selection */}
+            <div>
+              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                Issue Type *
+              </label>
+              <select 
+                value={previewIssueType} 
+                onChange={(e) => {
+                  setPreviewIssueType(e.target.value);
+                  setPreviewIssueSubtype('');
+                }}
+                className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-800 dark:text-white focus:ring-2 focus:ring-blue-500"
+              >
+                <option value="">Select an issue type</option>
+                {formConfig.issueTypes.map((issueType, idx) => (
+                  <option key={idx} value={issueType.name}>{issueType.name}</option>
+                ))}
+              </select>
+            </div>
+
+            {/* Issue Subtype Selection */}
+            {previewIssueType && (
+              <div>
+                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                  Issue Subtype *
+                </label>
+                <select 
+                  value={previewIssueSubtype} 
+                  onChange={(e) => setPreviewIssueSubtype(e.target.value)}
+                  className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-800 dark:text-white focus:ring-2 focus:ring-blue-500"
+                >
+                  <option value="">Select a subtype</option>
+                  {formConfig.issueTypes.find(it => it.name === previewIssueType)?.subtypes.map((subtype, idx) => (
+                    <option key={idx} value={subtype}>{subtype}</option>
+                  ))}
+                </select>
+              </div>
+            )}
+
+            {/* Selected Summary */}
+            {(previewCampus || previewIssueType) && (
+              <div className="bg-green-50 dark:bg-green-900/20 p-4 rounded-lg border border-green-200 dark:border-green-800">
+                <h4 className="text-sm font-semibold text-green-900 dark:text-green-100 mb-2">Currently Selected</h4>
+                <div className="text-sm text-green-800 dark:text-green-300 space-y-1">
+                  {previewCampus && <p><strong>Campus:</strong> {previewCampus}</p>}
+                  {previewBuilding && <p><strong>Building:</strong> {previewBuilding}</p>}
+                  {previewRoom && <p><strong>Room:</strong> {previewRoom}</p>}
+                  {previewUnitId && <p><strong>Unit ID:</strong> {previewUnitId}</p>}
+                  {previewIssueType && <p><strong>Issue Type:</strong> {previewIssueType}</p>}
+                  {previewIssueSubtype && <p><strong>Issue Subtype:</strong> {previewIssueSubtype}</p>}
+                </div>
+              </div>
+            )}
+
+            {/* Configuration Summary */}
+            <div className="bg-blue-50 dark:bg-blue-900/20 p-4 rounded-lg border border-blue-200 dark:border-blue-800">
+              <h4 className="text-sm font-semibold text-blue-900 dark:text-blue-100 mb-2">Configuration Summary</h4>
+              <div className="text-sm text-blue-800 dark:text-blue-300 space-y-1">
+                <p><strong>Total Campuses:</strong> {formConfig.campuses.length}</p>
+                <p><strong>Total Buildings:</strong> {formConfig.campuses.reduce((sum, c) => sum + c.buildings.length, 0)}</p>
+                <p><strong>Total Rooms:</strong> {formConfig.campuses.reduce((sum, c) => sum + c.buildings.reduce((bs, b) => bs + b.rooms.length, 0), 0)}</p>
+                <p><strong>Total Issue Types:</strong> {formConfig.issueTypes.length}</p>
+                <p><strong>Total Subtypes:</strong> {formConfig.issueTypes.reduce((sum, it) => sum + it.subtypes.length, 0)}</p>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Form Dialog */}
       {showDialog && (

@@ -40,7 +40,7 @@ export const TicketDetails: React.FC<TicketDetailsProps> = ({ ticket, onBack }) 
           });
           await notifyAdmin(`Ticket #${ticket.id.slice(0, 8)} accepted by ${user?.firstName} ${user?.lastName}`, ticket.id);
           setConfirmDialog(null);
-          setTimeout(() => onBack(), 500);
+          setTimeout(() => window.location.reload(), 500);
         } catch (err) {
           console.error('Error accepting ticket:', err);
         }
@@ -59,15 +59,22 @@ export const TicketDetails: React.FC<TicketDetailsProps> = ({ ticket, onBack }) 
       message: 'Are you sure you want to mark this ticket as in progress?',
       onConfirm: async () => {
         try {
+          console.log('🟢 Admin starting progress on ticket:', ticket.id);
+          console.log('   Ticket status:', ticket.status);
+          console.log('   Admin notes:', adminNote);
+          
           await updateTicket(ticket.id, {
             status: 'in_progress',
             adminNotes: adminNote,
           });
+          
+          console.log('✅ Ticket status changed to in_progress');
           setAdminNote('');
           setConfirmDialog(null);
-          setTimeout(() => onBack(), 500);
+          setTimeout(() => window.location.reload(), 500);
         } catch (err) {
-          console.error('Error starting progress:', err);
+          console.error('🔴 Error starting progress:', err);
+          setValidationError(`Failed to start progress: ${err instanceof Error ? err.message : 'Unknown error'}`);
         }
       },
       type: 'info',
@@ -84,7 +91,7 @@ export const TicketDetails: React.FC<TicketDetailsProps> = ({ ticket, onBack }) 
             status: 'pending_resolution',
           });
           setConfirmDialog(null);
-          setTimeout(() => onBack(), 500);
+          setTimeout(() => window.location.reload(), 500);
         } catch (err) {
           console.error('Error submitting for resolution:', err);
         }
@@ -115,7 +122,7 @@ export const TicketDetails: React.FC<TicketDetailsProps> = ({ ticket, onBack }) 
           
           console.log('🟢 Notification sent, closing dialog');
           setConfirmDialog(null);
-          setTimeout(() => onBack(), 500);
+          setTimeout(() => window.location.reload(), 500);
         } catch (err) {
           console.error('🔴 Error confirming resolution:', err);
           setValidationError(`Failed to confirm resolution: ${err instanceof Error ? err.message : 'Unknown error'}`);
@@ -141,7 +148,7 @@ export const TicketDetails: React.FC<TicketDetailsProps> = ({ ticket, onBack }) 
             resolvedAt: new Date().toISOString(),
           });
           setConfirmDialog(null);
-          setTimeout(() => onBack(), 500);
+          setTimeout(() => window.location.reload(), 500);
         } catch (err) {
           console.error('Error confirming resolution:', err);
         }
@@ -166,7 +173,7 @@ export const TicketDetails: React.FC<TicketDetailsProps> = ({ ticket, onBack }) 
             resolvedAt: new Date().toISOString(),
           });
           setConfirmDialog(null);
-          setTimeout(() => onBack(), 500);
+          setTimeout(() => window.location.reload(), 500);
         } catch (err) {
           console.error('Error finalizing ticket:', err);
         }

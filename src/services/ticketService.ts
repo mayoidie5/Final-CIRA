@@ -403,3 +403,52 @@ export const bulkUpdateTicketsStatus = async (
     throw error;
   }
 };
+
+/**
+ * Auto-delete resolved tickets after 30 days
+ * This function should be called periodically (e.g., on app load or via Cloud Functions)
+ */
+export const autoDeleteResolvedTickets = async (): Promise<number> => {
+  try {
+    console.log('🔄 Checking for resolved tickets to auto-delete (30+ days old)...');
+
+    // Get all resolved tickets
+    const q = query(
+      collection(db, 'tickets'),
+      where('status', '==', 'resolved'),
+      orderBy('resolvedAt', 'asc')
+    );
+    const querySnapshot = await getDocs(q);
+
+    const now = new Date();
+    const thirtyDaysAgo = new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000);
+    
+    let deletedCount = 0;
+    const batch = writeBatch(db);
+
+    querySnapshot.docs.forEach(doc => {
+      const data = doc.data();
+      const resolvedAt = data.resolvedAt?.toDate?.() || new Date(data.resolvedAt);
+
+      // If ticket was resolved more than 30 days ago, delete it
+      if (resolvedAt <= thirtyDaysAgo) {
+        console.log('🗑️  Auto-deleting resolved ticket:', doc.id, 'Resolved:', resolvedAt);
+        batch.delete(doc.ref);
+        deletedCount++;
+      }
+    });
+
+    // Commit all deletions
+    if (deletedCount > 0) {
+      await batch.commit();
+      console.log('✅ Auto-deleted', deletedCount, 'resolved tickets (30+ days old)');
+    } else {
+      console.log('ℹ️  No resolved tickets older than 30 days to delete');
+    }
+
+    return deletedCount;
+  } catch (error) {
+    console.error('❌ Error auto-deleting resolved tickets:', error);
+    throw error;
+  }
+};
