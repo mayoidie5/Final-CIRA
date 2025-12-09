@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Search, Archive as ArchiveIcon, Eye, Trash2 } from 'lucide-react';
+import { Search, Archive as ArchiveIcon, Eye, Trash2, Filter, X } from 'lucide-react';
 import { useAuth } from '../contexts/AuthContext';
 import { useTickets } from '../hooks/useTickets';
 import { Ticket } from '../types';
@@ -10,6 +10,12 @@ export const Archive: React.FC = () => {
   const { user } = useAuth();
   const { tickets, deleteTicket } = useTickets();
   const [searchTerm, setSearchTerm] = useState('');
+  const [showFilters, setShowFilters] = useState(false);
+  const [filters, setFilters] = useState({
+    campus: 'all',
+    room: 'all',
+    issueType: 'all',
+  });
   const [selectedTicket, setSelectedTicket] = useState<Ticket | null>(null);
   const [deleteConfirm, setDeleteConfirm] = useState<{ ticketId: string; ticketNum: string } | null>(null);
 
@@ -25,15 +31,26 @@ export const Archive: React.FC = () => {
     return archivedTickets;
   };
 
-  const filteredTickets = getArchivedTickets().filter(ticket => {
+  const allArchivedTickets = getArchivedTickets();
+
+  const filteredTickets = allArchivedTickets.filter(ticket => {
     const matchesSearch = 
       ticket.id.toLowerCase().includes(searchTerm.toLowerCase()) ||
       ticket.issueType.toLowerCase().includes(searchTerm.toLowerCase()) ||
       ticket.room.toLowerCase().includes(searchTerm.toLowerCase()) ||
       ticket.unitId.toLowerCase().includes(searchTerm.toLowerCase());
 
-    return matchesSearch;
+    const matchesCampus = filters.campus === 'all' || ticket.campus === filters.campus;
+    const matchesRoom = filters.room === 'all' || ticket.room === filters.room;
+    const matchesIssueType = filters.issueType === 'all' || ticket.issueType === filters.issueType;
+
+    return matchesSearch && matchesCampus && matchesRoom && matchesIssueType;
   });
+
+  // Get unique values for filter dropdowns
+  const uniqueCampuses = Array.from(new Set(allArchivedTickets.map(t => t.campus)));
+  const uniqueRooms = Array.from(new Set(allArchivedTickets.map(t => t.room)));
+  const uniqueIssueTypes = Array.from(new Set(allArchivedTickets.map(t => t.issueType)));
 
   const handleDeleteTicket = (ticketId: string, ticketNum: string) => {
     setDeleteConfirm({ ticketId, ticketNum });
@@ -70,16 +87,72 @@ export const Archive: React.FC = () => {
             Resolved tickets are automatically deleted after 30 days
           </p>
 
-          <div className="relative">
-            <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" size={20} />
-            <input
-              type="text"
-              value={searchTerm}
-              onChange={(e) => setSearchTerm(e.target.value)}
-              placeholder="Search archived tickets..."
-              className="w-full pl-10 pr-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 dark:bg-gray-700 dark:text-white"
-            />
+          <div className="flex gap-2 mb-4">
+            <div className="flex-1 relative">
+              <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" size={20} />
+              <input
+                type="text"
+                value={searchTerm}
+                onChange={(e) => setSearchTerm(e.target.value)}
+                placeholder="Search archived tickets..."
+                className="w-full pl-10 pr-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 dark:bg-gray-700 dark:text-white"
+              />
+            </div>
+            <button
+              onClick={() => setShowFilters(!showFilters)}
+              className="px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors flex items-center gap-2 text-gray-700 dark:text-gray-300"
+            >
+              <Filter size={20} />
+              Filters
+            </button>
           </div>
+
+          {/* Filter Panel */}
+          {showFilters && (
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 p-4 bg-gray-50 dark:bg-gray-900 rounded-lg mb-4">
+              <div>
+                <label className="block text-gray-700 dark:text-gray-300 mb-2 font-medium">Campus</label>
+                <select
+                  value={filters.campus}
+                  onChange={(e) => setFilters({ ...filters, campus: e.target.value })}
+                  className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 dark:bg-gray-700 dark:text-white"
+                >
+                  <option value="all">All Campuses</option>
+                  {uniqueCampuses.map(campus => (
+                    <option key={campus} value={campus}>{campus}</option>
+                  ))}
+                </select>
+              </div>
+
+              <div>
+                <label className="block text-gray-700 dark:text-gray-300 mb-2 font-medium">Room</label>
+                <select
+                  value={filters.room}
+                  onChange={(e) => setFilters({ ...filters, room: e.target.value })}
+                  className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 dark:bg-gray-700 dark:text-white"
+                >
+                  <option value="all">All Rooms</option>
+                  {uniqueRooms.map(room => (
+                    <option key={room} value={room}>{room}</option>
+                  ))}
+                </select>
+              </div>
+
+              <div>
+                <label className="block text-gray-700 dark:text-gray-300 mb-2 font-medium">Issue Type</label>
+                <select
+                  value={filters.issueType}
+                  onChange={(e) => setFilters({ ...filters, issueType: e.target.value })}
+                  className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 dark:bg-gray-700 dark:text-white"
+                >
+                  <option value="all">All Issue Types</option>
+                  {uniqueIssueTypes.map(type => (
+                    <option key={type} value={type}>{type}</option>
+                  ))}
+                </select>
+              </div>
+            </div>
+          )}
         </div>
 
         {/* Desktop Table View */}

@@ -59,15 +59,22 @@ export const TicketDetails: React.FC<TicketDetailsProps> = ({ ticket, onBack }) 
       message: 'Are you sure you want to mark this ticket as in progress?',
       onConfirm: async () => {
         try {
+          console.log('🟢 Admin starting progress on ticket:', ticket.id);
+          console.log('   Ticket status:', ticket.status);
+          console.log('   Admin notes:', adminNote);
+          
           await updateTicket(ticket.id, {
             status: 'in_progress',
             adminNotes: adminNote,
           });
+          
+          console.log('✅ Ticket status changed to in_progress');
           setAdminNote('');
           setConfirmDialog(null);
           setTimeout(() => onBack(), 500);
         } catch (err) {
-          console.error('Error starting progress:', err);
+          console.error('🔴 Error starting progress:', err);
+          setValidationError(`Failed to start progress: ${err instanceof Error ? err.message : 'Unknown error'}`);
         }
       },
       type: 'info',
@@ -469,6 +476,17 @@ export const TicketDetails: React.FC<TicketDetailsProps> = ({ ticket, onBack }) 
               >
                 Accept Ticket
               </button>
+            </div>
+          )}
+
+          {/* Debug Info - Admin Actions */}
+          {user?.role === 'admin' && (
+            <div className="mt-4 p-3 bg-gray-100 dark:bg-gray-700 rounded-lg text-sm text-gray-700 dark:text-gray-300">
+              <p>🔍 Debug: Admin Action Availability</p>
+              <p>User role: {user?.role}</p>
+              <p>Ticket status: {ticket.status}</p>
+              <p>Can start progress: {canStartProgress ? 'YES' : 'NO'}</p>
+              <p>Can submit resolution: {canSubmitResolution ? 'YES' : 'NO'}</p>
             </div>
           )}
 
