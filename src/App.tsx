@@ -19,12 +19,19 @@ import { LayoutDashboard, FileText, Plus, Users, Edit, Archive as ArchiveIcon, M
 const AppContent: React.FC = () => {
   const { user } = useAuth();
   const [authView, setAuthView] = useState<'signin' | 'signup'>('signin');
-  const [currentPage, setCurrentPage] = useState('dashboard');
+  const [currentPage, setCurrentPage] = useState(() => {
+    return localStorage.getItem('lastPage') || 'dashboard';
+  });
   const [selectedTicketId, setSelectedTicketId] = useState<string | null>(null);
   const [showSettings, setShowSettings] = useState(false);
   const [showTutorial, setShowTutorial] = useState(false);
   const [sidebarOpen, setSidebarOpen] = useState(true);
   const [showEmailVerificationModal, setShowEmailVerificationModal] = useState(false);
+
+  // Save current page to localStorage whenever it changes
+  useEffect(() => {
+    localStorage.setItem('lastPage', currentPage);
+  }, [currentPage]);
 
   // Initialize localStorage with required data on first load
   useEffect(() => {
@@ -178,6 +185,7 @@ const AppContent: React.FC = () => {
                   key={item.id}
                   onClick={() => {
                     setCurrentPage(item.id);
+                    setSelectedTicketId(null);
                     if (window.innerWidth < 1024) {
                       setSidebarOpen(false);
                     }

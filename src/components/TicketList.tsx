@@ -66,6 +66,11 @@ export const TicketList: React.FC<TicketListProps> = ({ view = 'all', selectedTi
     }
   }, [tickets]);
 
+  // Clear selectedTicket when view changes to ensure ticket is in the current filtered list
+  useEffect(() => {
+    setSelectedTicket(null);
+  }, [view]);
+
   const getUserTickets = () => {
     let userTickets = tickets;
     
