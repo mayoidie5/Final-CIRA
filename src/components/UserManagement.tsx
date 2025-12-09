@@ -1,14 +1,19 @@
 import React, { useState, useEffect } from 'react';
-import { Users, CheckCircle, XCircle, Clock, Trash2, Filter, X } from 'lucide-react';
+import { Users, CheckCircle, XCircle, Clock, Trash2, Filter, AlertCircle } from 'lucide-react';
 import { User } from '../types';
 import { FormDialog } from './FormDialog';
 import { ConfirmDialog } from './ConfirmDialog';
+import { SuccessToast } from './SuccessToast';
+import * as userService from '../services/userService';
 
 export const UserManagement: React.FC = () => {
   const [users, setUsers] = useState<User[]>([]);
   const [pendingUsers, setPendingUsers] = useState<User[]>([]);
   const [showFilters, setShowFilters] = useState(false);
   const [showDeleteDialog, setShowDeleteDialog] = useState<{ userId: string; userName: string } | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+  const [successMessage, setSuccessMessage] = useState<string | null>(null);
   const [filters, setFilters] = useState({
     role: 'all',
     status: 'all',
@@ -20,72 +25,75 @@ export const UserManagement: React.FC = () => {
     loadUsers();
   }, []);
 
-  const loadUsers = () => {
-    const storedUsers = JSON.parse(localStorage.getItem('users') || '[]');
-    setUsers(storedUsers.filter((u: User) => u.role !== 'admin' && !u.isPending));
-    setPendingUsers(storedUsers.filter((u: User) => u.isPending));
+  const loadUsers = async () => {
+    try {
+      setLoading(true);
+      setError(null);
+      const [allUsers, pending] = await Promise.all([
+        userService.fetchAllUsers(),
+        userService.fetchPendingUsers(),
+      ]);
+      setUsers(allUsers);
+      setPendingUsers(pending);
+    } catch (err) {
+      console.error('Failed to load users:', err);
+      setError('Failed to load users from database');
+    } finally {
+      setLoading(false);
+    }
   };
 
-  const handleApprove = (userId: string) => {
-    const storedUsers = JSON.parse(localStorage.getItem('users') || '[]');
-    const updatedUsers = storedUsers.map((u: User) =>
-      u.id === userId ? { ...u, isPending: false, isVerified: true } : u
-    );
-    localStorage.setItem('users', JSON.stringify(updatedUsers));
-    loadUsers();
+  const handleApprove = async (userId: string) => {
+    try {
+      await userService.approveUser(userId);
+      setSuccessMessage('User approved successfully');
+      await loadUsers();
+    } catch (err) {
+      console.error('Failed to approve user:', err);
+      setError('Failed to approve user');
+    }
   };
 
-  const handleReject = (userId: string) => {
-    const storedUsers = JSON.parse(localStorage.getItem('users') || '[]');
-    const updatedUsers = storedUsers.filter((u: User) => u.id !== userId);
-    localStorage.setItem('users', JSON.stringify(updatedUsers));
-    loadUsers();
+  const handleReject = async (userId: string) => {
+    try {
+      await userService.rejectUser(userId);
+      setSuccessMessage('User request rejected');
+      await loadUsers();
+    } catch (err) {
+      console.error('Failed to reject user:', err);
+      setError('Failed to reject user');
+    }
   };
 
-  const handleDeleteUser = (data: any) => {
+  const handleDeleteUser = async (data: any) => {
     if (!showDeleteDialog) return;
 
-    const storedUsers = JSON.parse(localStorage.getItem('users') || '[]');
-    const deletionType = data.deletionType;
-
-    if (deletionType === 'instant') {
-      // Instant deletion
-      const updatedUsers = storedUsers.filter((u: User) => u.id !== showDeleteDialog.userId);
-      localStorage.setItem('users', JSON.stringify(updatedUsers));
-      alert(`User ${showDeleteDialog.userName} has been permanently deleted.`);
-    } else {
-      // 3-day warning
-      const deletionDate = new Date();
-      deletionDate.setDate(deletionDate.getDate() + 3);
-      
-      const updatedUsers = storedUsers.map((u: User) =>
-        u.id === showDeleteDialog.userId
-          ? {
-              ...u,
-              pendingDeletion: true,
-              deletionDate: deletionDate.toISOString(),
-              deletionReason: data.reason || 'No reason provided',
-            }
-          : u
-      );
-      localStorage.setItem('users', JSON.stringify(updatedUsers));
-      alert(`User ${showDeleteDialog.userName} has been scheduled for deletion in 3 days. They have been notified.`);
+    try {
+      if (data.deletionType === 'instant') {
+        await userService.deleteUserInstant(showDeleteDialog.userId);
+        setSuccessMessage(`User ${showDeleteDialog.userName} has been permanently deleted.`);
+      } else {
+        await userService.scheduleUserDeletion(showDeleteDialog.userId, data.reason || 'No reason provided');
+        setSuccessMessage(`User ${showDeleteDialog.userName} has been scheduled for deletion in 3 days.`);
+      }
+      await loadUsers();
+    } catch (err) {
+      console.error('Failed to delete user:', err);
+      setError('Failed to delete user');
+    } finally {
+      setShowDeleteDialog(null);
     }
-
-    loadUsers();
-    setShowDeleteDialog(null);
   };
 
-  const handleCancelDeletion = (userId: string) => {
-    const storedUsers = JSON.parse(localStorage.getItem('users') || '[]');
-    const updatedUsers = storedUsers.map((u: User) =>
-      u.id === userId
-        ? { ...u, pendingDeletion: false, deletionDate: undefined, deletionReason: undefined }
-        : u
-    );
-    localStorage.setItem('users', JSON.stringify(updatedUsers));
-    loadUsers();
-    alert('Account deletion has been cancelled.');
+  const handleCancelDeletion = async (userId: string) => {
+    try {
+      await userService.cancelUserDeletion(userId);
+      setSuccessMessage('Account deletion has been cancelled.');
+      await loadUsers();
+    } catch (err) {
+      console.error('Failed to cancel deletion:', err);
+      setError('Failed to cancel deletion');
+    }
   };
 
   const filteredUsers = users.filter(user => {
@@ -114,11 +122,46 @@ export const UserManagement: React.FC = () => {
 
   return (
     <div className="max-w-7xl mx-auto p-4 sm:p-6 space-y-4 sm:space-y-6">
+      {/* Success Toast */}
+      {successMessage && (
+        <SuccessToast
+          message={successMessage}
+          onDismiss={() => setSuccessMessage(null)}
+        />
+      )}
+
+      {/* Error Alert */}
+      {error && (
+        <div className="bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-lg p-4 flex items-start gap-3">
+          <AlertCircle className="text-red-600 dark:text-red-400 flex-shrink-0 mt-0.5" size={20} />
+          <div className="flex-1">
+            <h3 className="text-red-900 dark:text-red-100 font-semibold">Error</h3>
+            <p className="text-red-800 dark:text-red-200 text-sm">{error}</p>
+          </div>
+          <button
+            onClick={() => setError(null)}
+            className="text-red-600 dark:text-red-400 hover:text-red-700 dark:hover:text-red-300"
+          >
+            ✕
+          </button>
+        </div>
+      )}
+
       <div>
         <h2 className="text-gray-800 dark:text-white mb-2">User Management</h2>
         <p className="text-gray-600 dark:text-gray-400">Manage user accounts and pending requests</p>
       </div>
 
+      {/* Loading State */}
+      {loading ? (
+        <div className="bg-white dark:bg-gray-800 rounded-lg shadow border border-gray-200 dark:border-gray-700 p-8">
+          <div className="flex flex-col items-center justify-center gap-4">
+            <div className="w-8 h-8 border-4 border-gray-300 dark:border-gray-600 border-t-blue-600 rounded-full animate-spin"></div>
+            <p className="text-gray-600 dark:text-gray-400">Loading users...</p>
+          </div>
+        </div>
+      ) : (
+        <>
       {/* Statistics Cards */}
       <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3 sm:gap-4">
         <div className="bg-white dark:bg-gray-800 p-4 rounded-lg border border-gray-200 dark:border-gray-700">
@@ -599,6 +642,8 @@ export const UserManagement: React.FC = () => {
           onCancel={() => setShowDeleteDialog(null)}
           submitLabel="Delete User"
         />
+      )}
+        </>
       )}
     </div>
   );
