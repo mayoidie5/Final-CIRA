@@ -1,5 +1,5 @@
 import React, { useState, useRef, useEffect } from 'react';
-import { Bell, User, LogOut, Settings, Sun, Moon, Monitor, X, MonitorCheck, HelpCircle } from 'lucide-react';
+import { Bell, User, LogOut, Settings, Sun, Moon, Monitor, X, HelpCircle } from 'lucide-react';
 import { useAuth } from '../contexts/AuthContext';
 import { useTheme } from '../contexts/ThemeContext';
 import { useNotifications } from '../contexts/NotificationContext';
@@ -67,7 +67,11 @@ export const Header: React.FC<HeaderProps> = ({ onOpenSettings, onNavigate, onOp
         <div className="flex items-center justify-between h-16">
           {/* Left side - Logo and Title */}
           <div className="flex items-center gap-2 sm:gap-3 min-w-0">
-            <MonitorCheck className="text-blue-600 dark:text-blue-400 flex-shrink-0" size={28} />
+            <img 
+              src={theme === 'dark' ? '/assets/MainLogoWhite.png' : '/assets/MainLogoNavyBlue.png'}
+              alt="CIRA Logo" 
+              className="h-8 w-auto flex-shrink-0"
+            />
             <h1 className="text-blue-600 dark:text-blue-400 truncate text-base sm:text-xl md:text-2xl">
               <span className="hidden sm:inline">Comlab Issue Reporting</span>
               <span className="sm:hidden">Comlab</span>

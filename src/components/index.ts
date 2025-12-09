@@ -30,8 +30,6 @@ export { type Column } from './DataTable';
 
 // Action Components
 export { ExportButton } from './ExportButton';
-export { QuickActions } from './QuickActions';
-export { type QuickAction } from './QuickActions';
 export { BulkActions } from './BulkActions';
 export { type BulkAction } from './BulkActions';
 
