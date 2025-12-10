@@ -85,11 +85,14 @@ const AppContent: React.FC = () => {
 
   // Handle page navigation, with special handling for ticket URLs
   const handleNavigate = (page: string) => {
+    console.log('🧭 handleNavigate called with:', page);
     if (page.startsWith('tickets/')) {
       // Extract ticket ID from "tickets/{ticketId}"
       const ticketId = page.split('/')[1];
+      console.log('🎫 Extracted ticketId:', ticketId);
       setSelectedTicketId(ticketId);
       setCurrentPage('tickets');
+      console.log('📄 Set currentPage to: tickets');
     } else {
       setSelectedTicketId(null);
       setCurrentPage(page);

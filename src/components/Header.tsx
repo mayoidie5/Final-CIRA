@@ -43,21 +43,35 @@ export const Header: React.FC<HeaderProps> = ({ onOpenSettings, onNavigate, onOp
 
   const handleNotificationClick = async (notification: any) => {
     try {
+      console.log('🔔 Notification clicked:', notification);
+      console.log('📍 targetPage:', notification.targetPage);
+      console.log('🎫 ticketId:', notification.ticketId);
+      console.log('📢 onNavigate function exists:', !!onNavigate);
+      
       await markAsRead(notification.id);
-      if (notification.targetPage && onNavigate) {
-        // Extract the page and ID from the targetPage (e.g., "/tickets/123" -> navigate to ticket details)
-        if (notification.targetPage.startsWith('/tickets/')) {
-          // For ticket notifications, we navigate to a specific ticket
-          // Store the ticket ID to be displayed and navigate to tickets view
+      
+      // Close the notification dropdown
+      setShowNotifications(false);
+      
+      // Navigate based on the ticketId or targetPage
+      if (onNavigate) {
+        if (notification.ticketId) {
+          console.log('🚀 Navigating to ticket via ticketId:', notification.ticketId);
           onNavigate(`tickets/${notification.ticketId}`);
+        } else if (notification.targetPage) {
+          // Extract ticketId from targetPage (e.g., "/tickets/123" -> "123")
+          const parts = notification.targetPage.split('/');
+          const ticketId = parts[parts.length - 1];
+          console.log('🚀 Navigating to ticket via targetPage - extracted ticketId:', ticketId);
+          onNavigate(`tickets/${ticketId}`);
         } else {
-          // For other pages, just navigate directly
-          onNavigate(notification.targetPage);
+          console.warn('⚠️ No navigation info - missing both ticketId and targetPage');
         }
-        setShowNotifications(false);
+      } else {
+        console.warn('⚠️ onNavigate function not available');
       }
     } catch (error) {
-      console.error('Error marking notification as read:', error);
+      console.error('❌ Error handling notification click:', error);
     }
   };
 
@@ -149,7 +163,9 @@ export const Header: React.FC<HeaderProps> = ({ onOpenSettings, onNavigate, onOp
                         No notifications
                       </div>
                     ) : (
-                      notifications.map(notification => (
+                      notifications.map(notification => {
+                        console.log('📲 Rendering notification:', notification);
+                        return (
                         <div
                           key={notification.id}
                           onClick={() => handleNotificationClick(notification)}
@@ -162,7 +178,8 @@ export const Header: React.FC<HeaderProps> = ({ onOpenSettings, onNavigate, onOp
                             {new Date(notification.createdAt).toLocaleString()}
                           </p>
                         </div>
-                      ))
+                      );
+                      })
                     )}
                   </div>
                 </div>

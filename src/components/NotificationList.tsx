@@ -4,7 +4,11 @@ import { useAuth } from '../contexts/AuthContext';
 import { useNotifications } from '../contexts/NotificationContext';
 import { LoadingSpinner } from './LoadingSpinner';
 
-export const NotificationList: React.FC = () => {
+interface NotificationListProps {
+  onNavigate?: (page: string) => void;
+}
+
+export const NotificationList: React.FC<NotificationListProps> = ({ onNavigate }) => {
   const { user } = useAuth();
   const {
     notifications,
@@ -75,6 +79,25 @@ export const NotificationList: React.FC = () => {
     return `${Math.floor(diffInSeconds / 86400)}d ago`;
   };
 
+  const handleNotificationClick = async (notification: any) => {
+    try {
+      await markAsRead(notification.id);
+      if (notification.targetPage && onNavigate) {
+        // Extract the page and ID from the targetPage (e.g., "/tickets/123" -> navigate to ticket details)
+        if (notification.targetPage.startsWith('/tickets/')) {
+          // For ticket notifications, navigate to ticket details
+          const ticketId = notification.targetPage.split('/')[2];
+          onNavigate(`tickets/${ticketId}`);
+        } else {
+          // For other pages, just navigate directly
+          onNavigate(notification.targetPage);
+        }
+      }
+    } catch (error) {
+      console.error('Error handling notification click:', error);
+    }
+  };
+
   return (
     <div className="w-full max-w-2xl mx-auto">
       {/* Header with Mark All as Read */}
@@ -103,7 +126,8 @@ export const NotificationList: React.FC = () => {
         {notifications.map((notification) => (
           <div
             key={notification.id}
-            className={`flex items-start gap-4 p-4 rounded-lg border transition-all ${
+            onClick={() => handleNotificationClick(notification)}
+            className={`flex items-start gap-4 p-4 rounded-lg border transition-all cursor-pointer hover:shadow-md ${
               notification.isRead
                 ? 'bg-white dark:bg-gray-900 border-gray-200 dark:border-gray-800'
                 : 'bg-blue-50 dark:bg-blue-900/10 border-blue-200 dark:border-blue-800'

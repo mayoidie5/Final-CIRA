@@ -49,7 +49,9 @@ export const NotificationProvider: React.FC<{ children: React.ReactNode }> = ({ 
   const fetchNotifications = async (userId: string) => {
     try {
       setLoading(true);
+      console.log('📬 Fetching notifications for user:', userId);
       const notifs = await getUserNotifications(userId);
+      console.log('✅ Fetched notifications:', notifs);
       setNotifications(notifs);
       
       // Calculate unread count

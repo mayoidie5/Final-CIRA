@@ -47,10 +47,15 @@ export const TicketList: React.FC<TicketListProps> = ({ view = 'all', selectedTi
 
   // Auto-select ticket if selectedTicketId is provided
   useEffect(() => {
+    console.log('🎯 TicketList useEffect: selectedTicketId =', selectedTicketId, 'tickets.length =', tickets.length);
     if (selectedTicketId && tickets.length > 0) {
       const ticket = tickets.find(t => t.id === selectedTicketId);
+      console.log('🔍 Looking for ticket:', selectedTicketId, 'found:', !!ticket);
       if (ticket) {
+        console.log('✅ Setting selectedTicket:', ticket.id);
         setSelectedTicket(ticket);
+      } else {
+        console.warn('⚠️ Ticket not found in filtered list');
       }
     }
   }, [selectedTicketId, tickets]);
