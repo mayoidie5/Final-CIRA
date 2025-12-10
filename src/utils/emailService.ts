@@ -1,4 +1,6 @@
 import emailjs from '@emailjs/browser';
+import { db } from '../config/firebase';
+import { doc, setDoc, collection, query, where, getDocs, updateDoc } from 'firebase/firestore';
 
 // Initialize EmailJS with your public key
 // Public Key from EmailJS dashboard
@@ -19,29 +21,30 @@ export const sendVerificationEmail = async (email: string) => {
   try {
     console.log('📧 Attempting to send verification email to:', email);
 
-    // Check if token already exists for this email
-    const tokens = JSON.parse(localStorage.getItem('verificationTokens') || '{}');
-    let verificationToken: string;
+    // Generate verification token
+    const verificationToken = generateVerificationToken();
+    console.log('📧 Generated new verification token:', verificationToken);
     
-    if (tokens[email]) {
-      // Use existing token
-      verificationToken = tokens[email].token;
-      console.log('📧 Using existing token for email:', email);
-      console.log('📧 Existing token:', verificationToken);
-    } else {
-      // Generate new token
-      verificationToken = generateVerificationToken();
-      console.log('📧 Generated new verification token:', verificationToken);
-      
-      // Store token in localStorage BEFORE sending email
+    // Store token in Firestore (server-side) so it persists across devices/sessions
+    try {
+      const verificationTokensRef = collection(db, 'verificationTokens');
+      await setDoc(doc(verificationTokensRef, email), {
+        token: verificationToken,
+        email: email,
+        createdAt: new Date().toISOString(),
+        expiresAt: new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString(), // 24 hours
+      });
+      console.log('💾 Token stored in Firestore for email:', email);
+    } catch (firestoreError) {
+      console.warn('⚠️ Could not store token in Firestore, falling back to localStorage:', firestoreError);
+      // Fallback to localStorage
+      const tokens = JSON.parse(localStorage.getItem('verificationTokens') || '{}');
       tokens[email] = {
         token: verificationToken,
         createdAt: new Date().toISOString(),
-        expiresAt: new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString(), // 24 hours
+        expiresAt: new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString(),
       };
       localStorage.setItem('verificationTokens', JSON.stringify(tokens));
-      console.log('💾 Token stored in localStorage for email:', email);
-      console.log('💾 Stored token value:', verificationToken);
     }
     
     const verificationLink = `${window.location.origin}/verify?token=${verificationToken}&email=${encodeURIComponent(email)}`;
@@ -94,65 +97,126 @@ export const generateVerificationToken = (): string => {
   return Math.random().toString(36).substring(2) + Date.now().toString(36);
 };
 
-export const verifyEmail = (email: string, token: string): boolean => {
+export const verifyEmail = async (email: string, token: string): Promise<boolean> => {
   console.log('🔐 Verifying email:', email);
   console.log('🔐 Token to verify:', token);
   
-  const tokens = JSON.parse(localStorage.getItem('verificationTokens') || '{}');
-  console.log('📦 All stored tokens:', tokens);
-  
-  const storedToken = tokens[email];
-  console.log('🔍 Stored token object for email:', storedToken);
+  try {
+    // Try to get token from Firestore first
+    const verificationTokensRef = collection(db, 'verificationTokens');
+    const q = query(verificationTokensRef, where('email', '==', email));
+    const querySnapshot = await getDocs(q);
+    
+    let storedToken: any = null;
+    
+    if (!querySnapshot.empty) {
+      storedToken = querySnapshot.docs[0].data();
+      console.log('📦 Found token in Firestore for email:', email);
+    } else {
+      // Fallback to localStorage if not in Firestore
+      console.log('⚠️ Token not found in Firestore, checking localStorage...');
+      const tokens = JSON.parse(localStorage.getItem('verificationTokens') || '{}');
+      storedToken = tokens[email];
+      
+      if (!storedToken) {
+        console.error('❌ No token found for email:', email);
+        console.error('   Available emails in tokens:', Object.keys(tokens));
+        return false;
+      }
+    }
 
-  if (!storedToken) {
-    console.error('❌ No token found for email:', email);
-    console.error('   Available emails in tokens:', Object.keys(tokens));
-    return false;
-  }
+    console.log('📝 Comparing tokens:');
+    console.log('   Stored:', storedToken.token);
+    console.log('   Received:', token);
+    console.log('   Match:', storedToken.token === token);
 
-  console.log('📝 Comparing tokens:');
-  console.log('   Stored:', storedToken.token);
-  console.log('   Received:', token);
-  console.log('   Match:', storedToken.token === token);
+    if (storedToken.token !== token) {
+      console.error('❌ Token mismatch!');
+      console.error('   Expected:', storedToken.token);
+      console.error('   Got:', token);
+      console.error('   Stored token length:', storedToken.token.length);
+      console.error('   Received token length:', token.length);
+      return false;
+    }
 
-  if (storedToken.token !== token) {
-    console.error('❌ Token mismatch!');
-    console.error('   Expected:', storedToken.token);
-    console.error('   Got:', token);
-    console.error('   Stored token length:', storedToken.token.length);
-    console.error('   Received token length:', token.length);
-    return false;
-  }
+    // Check if token has expired
+    const expiresAt = new Date(storedToken.expiresAt);
+    console.log('⏰ Token expiration check:');
+    console.log('   Expires at:', expiresAt);
+    console.log('   Now:', new Date());
+    
+    if (new Date() > expiresAt) {
+      console.error('❌ Token expired at:', expiresAt);
+      // Clean up expired token from Firestore
+      try {
+        const verTokensRef = collection(db, 'verificationTokens');
+        const expQuery = query(verTokensRef, where('email', '==', email));
+        const expSnapshot = await getDocs(expQuery);
+        if (!expSnapshot.empty) {
+          await updateDoc(doc(db, 'verificationTokens', expSnapshot.docs[0].id), {
+            isExpired: true
+          });
+        }
+      } catch (e) {
+        console.warn('Could not mark token as expired in Firestore');
+      }
+      return false;
+    }
 
-  // Check if token has expired
-  const expiresAt = new Date(storedToken.expiresAt);
-  console.log('⏰ Token expiration check:');
-  console.log('   Expires at:', expiresAt);
-  console.log('   Now:', new Date());
-  
-  if (new Date() > expiresAt) {
-    console.error('❌ Token expired at:', expiresAt);
+    console.log('✅ Token valid, marking email as verified');
+
+    // Update user as verified in Firestore
+    try {
+      const usersRef = collection(db, 'users');
+      const userQuery = query(usersRef, where('email', '==', email));
+      const userSnapshot = await getDocs(userQuery);
+      
+      if (!userSnapshot.empty) {
+        const userDoc = userSnapshot.docs[0];
+        await updateDoc(doc(db, 'users', userDoc.id), {
+          isVerified: true,
+        });
+        console.log('✅ Firestore updated: User marked as verified for', email);
+      } else {
+        console.warn('⚠️ Could not find user in Firestore with email:', email);
+      }
+    } catch (firestoreError: any) {
+      console.warn('⚠️ Could not update Firestore:', firestoreError.message);
+      // Still mark as verified locally even if Firestore update fails
+    }
+
+    // Also update localStorage for backup
+    const users = JSON.parse(localStorage.getItem('users') || '[]');
+    const userIndex = users.findIndex((u: any) => u.email === email);
+    if (userIndex !== -1) {
+      users[userIndex].isVerified = true;
+      localStorage.setItem('users', JSON.stringify(users));
+      console.log('✅ User marked as verified in localStorage');
+    }
+
+    // Remove/mark token as used
+    try {
+      const verTokensRef = collection(db, 'verificationTokens');
+      const delQuery = query(verTokensRef, where('email', '==', email));
+      const delSnapshot = await getDocs(delQuery);
+      if (!delSnapshot.empty) {
+        await updateDoc(doc(db, 'verificationTokens', delSnapshot.docs[0].id), {
+          isUsed: true
+        });
+      }
+    } catch (e) {
+      console.warn('Could not mark token as used in Firestore');
+    }
+
+    // Also clean from localStorage
+    const tokens = JSON.parse(localStorage.getItem('verificationTokens') || '{}');
     delete tokens[email];
     localStorage.setItem('verificationTokens', JSON.stringify(tokens));
+    console.log('✅ Token removed after verification');
+
+    return true;
+  } catch (error: any) {
+    console.error('❌ Error during email verification:', error);
     return false;
   }
-
-  console.log('✅ Token valid, marking email as verified');
-
-  // Update user as verified
-  const users = JSON.parse(localStorage.getItem('users') || '[]');
-  const userIndex = users.findIndex((u: any) => u.email === email);
-  
-  if (userIndex !== -1) {
-    users[userIndex].isVerified = true;
-    localStorage.setItem('users', JSON.stringify(users));
-    console.log('✅ User marked as verified in localStorage');
-  }
-
-  // Remove token after use
-  delete tokens[email];
-  localStorage.setItem('verificationTokens', JSON.stringify(tokens));
-  console.log('✅ Token removed after verification');
-
-  return true;
 };

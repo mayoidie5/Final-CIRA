@@ -3,7 +3,7 @@ import { User } from '../types';
 import { initializeAdminAccount } from '../utils/initAdmin';
 import { sendVerificationEmail } from '../utils/emailService';
 import { auth, db } from '../config/firebase';
-import { createUserWithEmailAndPassword, signInWithEmailAndPassword, signOut } from 'firebase/auth';
+import { createUserWithEmailAndPassword, signInWithEmailAndPassword, signOut, sendPasswordResetEmail } from 'firebase/auth';
 import { doc, setDoc, collection, getDoc, updateDoc } from 'firebase/firestore';
 
 interface AuthContextType {
@@ -13,6 +13,7 @@ interface AuthContextType {
   signup: (userData: Partial<User> & { password: string; confirmPassword: string }) => Promise<{ success: boolean; error?: string }>;
   updateUser: (updates: Partial<User>) => void;
   resendVerification: (email: string) => Promise<void>;
+  sendPasswordReset: (email: string) => Promise<{ success: boolean; error?: string }>;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -198,7 +199,6 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       localStorage.setItem('users', JSON.stringify(users));
     }
   };
-
   const resendVerification = async (email: string) => {
     try {
       await sendVerificationEmail(email);
@@ -207,8 +207,28 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     }
   };
 
+  const sendPasswordReset = async (email: string) => {
+    try {
+      await sendPasswordResetEmail(auth, email);
+      console.log('✅ Password reset email sent to:', email);
+      return { success: true };
+    } catch (error: any) {
+      console.error('❌ Password reset error:', error);
+      
+      if (error.code === 'auth/user-not-found') {
+        return { success: false, error: 'No account found with this email address' };
+      } else if (error.code === 'auth/invalid-email') {
+        return { success: false, error: 'Invalid email address' };
+      } else if (error.code === 'auth/too-many-requests') {
+        return { success: false, error: 'Too many password reset attempts. Please try again later.' };
+      }
+      
+      return { success: false, error: error.message || 'Failed to send password reset email' };
+    }
+  };
+
   return (
-    <AuthContext.Provider value={{ user, login, logout, signup, updateUser, resendVerification }}>
+    <AuthContext.Provider value={{ user, login, logout, signup, updateUser, resendVerification, sendPasswordReset }}>
       {children}
     </AuthContext.Provider>
   );

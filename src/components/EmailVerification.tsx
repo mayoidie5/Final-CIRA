@@ -36,15 +36,15 @@ export function EmailVerificationModal({ isOpen, onClose }: EmailVerificationMod
 
       try {
         console.log('🔐 Verifying email:', email);
-        const result = verifyEmail(email, token);
+        const result = await verifyEmail(email, token);
 
         if (result) {
           setStatus('success');
           setMessage('Your email has been verified successfully! You can now close this window and sign in.');
           console.log('✅ Email verified:', email);
           
-          // Update Firestore to mark email as verified
-          // Try to find and update the user document
+          // Update Firestore to mark email as verified (if not already done)
+          // This is handled in the verifyEmail function, but we try here as backup
           try {
             const usersRef = collection(db, 'users');
             const q = query(usersRef, where('email', '==', email));
@@ -54,16 +54,10 @@ export function EmailVerificationModal({ isOpen, onClose }: EmailVerificationMod
               const userDoc = querySnapshot.docs[0];
               const userRef = doc(db, 'users', userDoc.id);
               await updateDoc(userRef, { isVerified: true });
-              console.log('✅ Firestore updated: Email verified for', email);
-            } else {
-              console.warn('⚠️ Could not find user in Firestore with email:', email);
-              console.log('   Will update on next login');
+              console.log('✅ Firestore confirmed: Email verified for', email);
             }
           } catch (firestoreError: any) {
-            console.warn('⚠️ Could not update Firestore immediately (this is normal)');
-            console.warn('   Error:', firestoreError.message);
-            console.log('   Email will be marked verified on next sign in');
-            // This is OK - when user signs in, we'll check if email is verified
+            console.warn('⚠️ Firestore confirmation error (email may still be verified):', firestoreError.message);
           }
         } else {
           setStatus('error');

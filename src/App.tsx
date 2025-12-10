@@ -39,9 +39,12 @@ const AppContent: React.FC = () => {
       localStorage.setItem('notifications', JSON.stringify([]));
     }
 
-    // Check if user arrived from email verification link
+    // Check if user arrived from email verification link (via query params or /verify path)
     const urlParams = new URLSearchParams(window.location.search);
-    if (urlParams.has('token') && urlParams.has('email')) {
+    const pathname = window.location.pathname;
+    
+    // Check for /verify path or query parameters
+    if (pathname.includes('/verify') || (urlParams.has('token') && urlParams.has('email'))) {
       setShowEmailVerificationModal(true);
     }
   }, []);
