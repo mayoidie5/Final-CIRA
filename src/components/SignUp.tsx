@@ -83,7 +83,9 @@ export const SignUp: React.FC<SignUpProps> = ({ onSwitchToSignIn }) => {
     if (!value.trim()) {
       return 'Email is required';
     }
-    if (!value.includes('@plv.edu.ph')) {
+    // Accept email with or without @plv.edu.ph since it's added on blur
+    const emailWithDomain = value.includes('@plv.edu.ph') ? value : `${value}@plv.edu.ph`;
+    if (!emailWithDomain.includes('@plv.edu.ph')) {
       return 'Email must be from @plv.edu.ph domain';
     }
     return undefined;
@@ -446,8 +448,8 @@ export const SignUp: React.FC<SignUpProps> = ({ onSwitchToSignIn }) => {
           {/* Section 2: Sign Up Form */}
           <div className="mb-8 pb-8 border-b-2 border-gray-300 dark:border-gray-600">
             {/* Form Section */}
-            <form onSubmit={handleSubmit} className="space-y-4" style={{ marginTop: '2rem' }}>
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            <form onSubmit={handleSubmit} className="space-y-3 sm:space-y-4" style={{ marginTop: '2rem' }}>
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4">
               <div>
                 <label className="block text-gray-700 dark:text-gray-300 mb-2">First Name</label>
                 <input
@@ -574,7 +576,7 @@ export const SignUp: React.FC<SignUpProps> = ({ onSwitchToSignIn }) => {
 
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <div>
-                <label className="block text-gray-700 dark:text-gray-300 mb-2">Course</label>
+                <label className="block text-gray-700 dark:text-gray-300 mb-2 h-5">Course</label>
                 <select
                   name="course"
                   value={formData.course}
@@ -603,7 +605,7 @@ export const SignUp: React.FC<SignUpProps> = ({ onSwitchToSignIn }) => {
                 )}
               </div>
               <div>
-                <label className="block text-gray-700 dark:text-gray-300 mb-2">Year-Section (Format: 2-4)</label>
+                <label className="block text-gray-700 dark:text-gray-300 mb-2 h-5">Year-Section <span className="text-xs text-gray-500">(2-4)</span></label>
                 <input
                   type="text"
                   name="section"

@@ -11,12 +11,36 @@ interface ThemeContextType {
 const ThemeContext = createContext<ThemeContextType | undefined>(undefined);
 
 export const ThemeProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
-  const [theme, setThemeState] = useState<Theme>('system');
-  const [effectiveTheme, setEffectiveTheme] = useState<'light' | 'dark'>('light');
+  // Initialize theme from localStorage immediately
+  const savedTheme = (typeof localStorage !== 'undefined' ? localStorage.getItem('theme') : null) as Theme | null;
+  const initialTheme: Theme = savedTheme || 'light';
+  
+  // Calculate initial effective theme
+  const getInitialEffectiveTheme = (): 'light' | 'dark' => {
+    if (initialTheme === 'system') {
+      return window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
+    }
+    return initialTheme;
+  };
+  
+  const initialEffectiveTheme = getInitialEffectiveTheme();
+  
+  // Apply initial theme class immediately
+  if (typeof document !== 'undefined') {
+    if (initialEffectiveTheme === 'dark') {
+      document.documentElement.classList.add('dark');
+    } else {
+      document.documentElement.classList.remove('dark');
+    }
+  }
+
+  const [theme, setThemeState] = useState<Theme>(initialTheme);
+  const [effectiveTheme, setEffectiveTheme] = useState<'light' | 'dark'>(initialEffectiveTheme);
 
   useEffect(() => {
+    // Load saved theme from localStorage (if not already done in initialization)
     const savedTheme = localStorage.getItem('theme') as Theme;
-    if (savedTheme) {
+    if (savedTheme && savedTheme !== theme) {
       setThemeState(savedTheme);
     }
   }, []);

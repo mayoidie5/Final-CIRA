@@ -373,8 +373,8 @@ export const TicketDetails: React.FC<TicketDetailsProps> = ({ ticket, onBack }) 
           {/* Images */}
           {ticket.images && ticket.images.length > 0 && (
             <div>
-              <h3 className="text-gray-800 dark:text-white mb-3">Attached Images</h3>
-              <div className="grid grid-cols-2 sm:grid-cols-3 gap-3 sm:gap-4">
+              <h3 className="text-gray-800 dark:text-white mb-3 text-base sm:text-lg">Attached Images</h3>
+              <div className="grid grid-cols-2 sm:grid-cols-3 gap-2 sm:gap-3 lg:gap-4">
                 {ticket.images.map((image, index) => (
                   <img
                     key={index}

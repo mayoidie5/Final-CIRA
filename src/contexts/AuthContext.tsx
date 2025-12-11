@@ -130,8 +130,11 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     }
 
     try {
+      // Normalize email to lowercase for consistency
+      const normalizedEmail = userData.email!.toLowerCase();
+      
       // Create user in Firebase Authentication
-      const userCredential = await createUserWithEmailAndPassword(auth, userData.email!, userData.password!);
+      const userCredential = await createUserWithEmailAndPassword(auth, normalizedEmail, userData.password!);
       const firebaseUser = userCredential.user;
 
       // Create new user object
@@ -139,7 +142,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         id: firebaseUser.uid,
         firstName: userData.firstName!,
         lastName: userData.lastName!,
-        email: userData.email!,
+        email: normalizedEmail,
         role: userData.role!,
         studentId: userData.studentId,
         course: userData.course,

@@ -1,8 +1,9 @@
 import { useEffect, useState } from 'react';
 import { CheckCircle, AlertCircle, Loader } from 'lucide-react';
 import { verifyEmail } from '../utils/emailService';
-import { db } from '../config/firebase';
+import { auth, db } from '../config/firebase';
 import { doc, updateDoc, collection, query, where, getDocs } from 'firebase/firestore';
+import { signInAnonymously } from 'firebase/auth';
 
 interface EmailVerificationModalProps {
   isOpen: boolean;
@@ -12,53 +13,76 @@ interface EmailVerificationModalProps {
 export function EmailVerificationModal({ isOpen, onClose }: EmailVerificationModalProps) {
   const [status, setStatus] = useState<'loading' | 'success' | 'error'>('loading');
   const [message, setMessage] = useState('');
+  const [debugInfo, setDebugInfo] = useState('');
 
   useEffect(() => {
     if (!isOpen) return;
 
     const verifyEmailToken = async () => {
-      // Get token and email from URL parameters
-      const urlParams = new URLSearchParams(window.location.search);
-      const token = urlParams.get('token');
-      const email = urlParams.get('email');
+      try {
+        // Ensure user is authenticated (anonymously if needed)
+        console.log('🔐 Checking Firebase auth...');
+        if (!auth.currentUser) {
+          console.log('   No user logged in, signing in anonymously...');
+          await signInAnonymously(auth);
+          console.log('   ✅ Anonymous sign-in successful');
+        } else {
+          console.log('   ✅ User already authenticated:', auth.currentUser.uid);
+        }
+      } catch (authError) {
+        console.error('⚠️ Anonymous auth failed (non-blocking):', authError);
+      }
+
+      // Get token and email from URL
+      // Try path-based first: /verify/TOKEN/EMAIL
+      const pathname = window.location.pathname;
+      const pathParts = pathname.split('/').filter(p => p);
+      
+      let token = null;
+      let email = null;
+      
+      if (pathParts[0] === 'verify' && pathParts.length >= 3) {
+        token = decodeURIComponent(pathParts[1]);
+        email = decodeURIComponent(pathParts[2]);
+        console.log('📧 Verification link parsed from path');
+      } else {
+        // Fallback to query/hash params
+        const urlParams = new URLSearchParams(window.location.search);
+        const hashParams = new URLSearchParams(window.location.hash.slice(1));
+        
+        token = urlParams.get('token') || hashParams.get('token');
+        email = urlParams.get('email') || hashParams.get('email');
+        
+        if (email) email = decodeURIComponent(email);
+        if (token) token = decodeURIComponent(token);
+        
+        console.log('📧 Verification link parsed from query/hash params');
+      }
+
+      const debug = `URL: ${window.location.href}\nPathname: ${window.location.pathname}\nToken: ${token}\nEmail: ${email}`;
+      setDebugInfo(debug);
 
       console.log('📧 URL Parameters:');
       console.log('   Full URL:', window.location.href);
-      console.log('   Token from URL:', token);
-      console.log('   Email from URL:', email);
+      console.log('   Pathname:', window.location.pathname);
+      console.log('   Token:', token);
+      console.log('   Email:', email);
 
       if (!token || !email) {
         setStatus('error');
-        setMessage('Invalid verification link. Missing token or email.');
+        setMessage(`Invalid verification link. Missing token or email. Token: ${token ? 'found' : 'missing'}, Email: ${email ? 'found' : 'missing'}`);
         console.error('❌ Missing token or email in URL');
         return;
       }
 
       try {
-        console.log('🔐 Verifying email:', email);
+        console.log('🔐 Verifying email with Firestore:', email);
         const result = await verifyEmail(email, token);
 
         if (result) {
           setStatus('success');
           setMessage('Your email has been verified successfully! You can now close this window and sign in.');
           console.log('✅ Email verified:', email);
-          
-          // Update Firestore to mark email as verified (if not already done)
-          // This is handled in the verifyEmail function, but we try here as backup
-          try {
-            const usersRef = collection(db, 'users');
-            const q = query(usersRef, where('email', '==', email));
-            const querySnapshot = await getDocs(q);
-            
-            if (!querySnapshot.empty) {
-              const userDoc = querySnapshot.docs[0];
-              const userRef = doc(db, 'users', userDoc.id);
-              await updateDoc(userRef, { isVerified: true });
-              console.log('✅ Firestore confirmed: Email verified for', email);
-            }
-          } catch (firestoreError: any) {
-            console.warn('⚠️ Firestore confirmation error (email may still be verified):', firestoreError.message);
-          }
         } else {
           setStatus('error');
           setMessage('Email verification failed. Token may have expired or is invalid.');
@@ -66,7 +90,9 @@ export function EmailVerificationModal({ isOpen, onClose }: EmailVerificationMod
         }
       } catch (error: any) {
         setStatus('error');
-        setMessage(error.message || 'An error occurred during verification. Please try again.');
+        const errorMsg = error.message || 'An error occurred during verification. Please try again.';
+        setMessage(errorMsg);
+        setDebugInfo(prev => prev + `\n\nError: ${errorMsg}\n${error.toString()}`);
         console.error('❌ Verification error:', error);
       }
     };
@@ -131,6 +157,13 @@ export function EmailVerificationModal({ isOpen, onClose }: EmailVerificationMod
             <p className="text-gray-600 dark:text-gray-400 mb-6">
               {message}
             </p>
+            {debugInfo && (
+              <div className="bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded p-4 mb-6 text-left max-h-64 overflow-y-auto">
+                <p className="text-xs font-mono text-red-700 dark:text-red-300 whitespace-pre-wrap break-words">
+                  {debugInfo}
+                </p>
+              </div>
+            )}
             <button
               onClick={onClose}
               className="w-full bg-blue-500 hover:bg-blue-600 text-white font-semibold py-3 px-4 rounded-lg transition duration-200"

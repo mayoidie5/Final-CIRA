@@ -32,12 +32,12 @@ export const Settings: React.FC<SettingsProps> = ({ onClose }) => {
     <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
       <div className="bg-white dark:bg-gray-800 rounded-lg shadow-xl max-w-2xl w-full max-h-[90vh] overflow-y-auto">
         <div className="p-4 sm:p-6 border-b border-gray-200 dark:border-gray-700 flex items-center justify-between sticky top-0 bg-white dark:bg-gray-800">
-          <h2 className="text-gray-800 dark:text-white">Settings</h2>
+          <h2 className="text-lg sm:text-xl text-gray-800 dark:text-white">Settings</h2>
           <button
             onClick={onClose}
             className="p-2 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-full transition-colors"
           >
-            <X size={20} className="text-gray-600 dark:text-gray-400" />
+            <X size={18} className="text-gray-600 dark:text-gray-400" />
           </button>
         </div>
 

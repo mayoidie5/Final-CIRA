@@ -93,7 +93,7 @@ export const Header: React.FC<HeaderProps> = ({ onOpenSettings, onNavigate, onOp
           </div>
 
           {/* Right side - Tutorial, Notifications and Profile */}
-          <div className="flex items-center gap-2 sm:gap-4">
+          <div className="flex items-center gap-1 sm:gap-2 lg:gap-4">
             {/* Tutorial Button */}
             <button
               onClick={onOpenTutorial}
