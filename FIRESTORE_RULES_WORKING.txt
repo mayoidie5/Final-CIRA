@@ -9,6 +9,7 @@ service cloud.firestore {
       // Allow reading own user or any authenticated user
       allow read: if request.auth != null;
       // Allow any authenticated user to update users (for email verification from anonymous auth)
+      // This includes approval and rejection of pending users by admins
       allow update: if request.auth != null;
       // Allow deletion only by own user
       allow delete: if request.auth != null && request.auth.uid == userId;

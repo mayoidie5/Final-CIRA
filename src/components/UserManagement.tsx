@@ -126,7 +126,7 @@ export const UserManagement: React.FC = () => {
       {successMessage && (
         <SuccessToast
           message={successMessage}
-          onDismiss={() => setSuccessMessage(null)}
+          onClose={() => setSuccessMessage(null)}
         />
       )}
 

@@ -54,7 +54,7 @@ export const Dashboard: React.FC<DashboardProps> = ({ onNavigate }) => {
             Welcome back, {user?.firstName}!
           </h2>
           <p className="text-gray-600 dark:text-gray-400">
-            {user?.role === 'admin' ? 'Admin Dashboard' : user?.role === 'class_rep' ? 'Class Representative Dashboard' : 'Student Dashboard'}
+            {user?.role === 'admin' ? 'Admin Dashboard' : user?.role === 'class_rep' && !user?.isPending ? 'Class Representative Dashboard' : user?.role === 'class_rep' && user?.isPending ? 'Class Representative Dashboard (Pending Approval)' : 'Student Dashboard'}
           </p>
         </div>
         {user?.role === 'admin' && (
@@ -77,6 +77,19 @@ export const Dashboard: React.FC<DashboardProps> = ({ onNavigate }) => {
           </button>
         )}
       </div>
+
+      {/* Pending Class Rep Approval Banner */}
+      {user?.role === 'class_rep' && user?.isPending && (
+        <div className="bg-yellow-50 dark:bg-yellow-900/20 border border-yellow-300 dark:border-yellow-700 rounded-lg p-4 flex items-start gap-3">
+          <AlertCircle className="text-yellow-600 dark:text-yellow-400 flex-shrink-0 mt-0.5" size={20} />
+          <div>
+            <h3 className="font-semibold text-yellow-800 dark:text-yellow-200">Pending Admin Approval</h3>
+            <p className="text-yellow-700 dark:text-yellow-300 text-sm mt-1">
+              Your class representative request is pending approval from an administrator. You currently have student access. Once approved, you'll gain class representative privileges.
+            </p>
+          </div>
+        </div>
+      )}
 
       {/* Stats Cards */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4 lg:gap-6">

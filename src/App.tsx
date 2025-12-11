@@ -182,7 +182,7 @@ const AppContent: React.FC = () => {
         { id: 'form-editor', label: 'Form Editor', icon: Edit },
         { id: 'archive', label: 'Archive', icon: ArchiveIcon },
       ];
-    } else if (user.role === 'class_rep') {
+    } else if (user.role === 'class_rep' && !user.isPending) {
       return [
         { id: 'dashboard', label: 'Dashboard', icon: LayoutDashboard },
         { id: 'report', label: 'Report Issue', icon: Plus },
