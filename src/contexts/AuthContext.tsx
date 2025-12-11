@@ -4,7 +4,7 @@ import { initializeAdminAccount } from '../utils/initAdmin';
 import { sendVerificationEmail } from '../utils/emailService';
 import { auth, db } from '../config/firebase';
 import { createUserWithEmailAndPassword, signInWithEmailAndPassword, signOut, sendPasswordResetEmail } from 'firebase/auth';
-import { doc, setDoc, collection, getDoc, updateDoc } from 'firebase/firestore';
+import { doc, setDoc, collection, getDoc, updateDoc, connectFirestoreEmulator, enableNetwork } from 'firebase/firestore';
 
 interface AuthContextType {
   user: User | null;
@@ -45,7 +45,10 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       let userCredential = await signInWithEmailAndPassword(auth, email, password);
       let firebaseUser = userCredential.user;
 
-      // Get user data from Firestore
+      // Force Firestore to refresh from server
+      await enableNetwork(db);
+      
+      // Get user data from Firestore - with fresh read
       let userDoc = await getDoc(doc(db, 'users', firebaseUser.uid));
       
       if (!userDoc.exists()) {
@@ -76,10 +79,14 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       let foundUser = userDoc.data() as User;
 
       // CHECK FIRESTORE FOR VERIFICATION STATUS - THIS IS THE SOURCE OF TRUTH
-      // Users cannot bypass this by clearing localStorage
+      console.log('🔍 Checking verification status:');
+      console.log('   User ID:', firebaseUser.uid);
+      console.log('   Email from login:', email);
+      console.log('   Email in Firestore:', foundUser.email);
+      console.log('   isVerified in Firestore:', foundUser.isVerified);
+      
       if (!foundUser.isVerified) {
         console.log('📧 Email verification required for:', email);
-        console.log('   isVerified in Firestore:', foundUser.isVerified);
         return { success: false, needsVerification: true, error: 'Email not verified. Please check your inbox for the verification link.' };
       }
 
@@ -133,6 +140,17 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       // Normalize email to lowercase for consistency
       const normalizedEmail = userData.email!.toLowerCase();
       
+      // CHECK: Does a user with this email already exist in Firestore?
+      const existingUsersSnapshot = await getDocs(collection(db, 'users'));
+      const emailExists = existingUsersSnapshot.docs.some(doc => {
+        const docData = doc.data();
+        return docData.email && docData.email.toLowerCase() === normalizedEmail;
+      });
+      
+      if (emailExists) {
+        return { success: false, error: 'Email already registered. Please sign in instead.' };
+      }
+      
       // Create user in Firebase Authentication
       const userCredential = await createUserWithEmailAndPassword(auth, normalizedEmail, userData.password!);
       const firebaseUser = userCredential.user;
@@ -164,10 +182,12 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
       // Send verification email
       try {
+        console.log('📧 About to send verification email to:', userData.email!);
         await sendVerificationEmail(userData.email!);
         console.log('✅ Verification email sent to:', userData.email);
       } catch (error) {
         console.error('⚠️ Failed to send verification email:', error);
+        console.error('   Error details:', JSON.stringify(error));
         // Don't fail signup if email sending fails
       }
 

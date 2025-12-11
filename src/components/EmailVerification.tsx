@@ -20,17 +20,44 @@ export function EmailVerificationModal({ isOpen, onClose }: EmailVerificationMod
 
     const verifyEmailToken = async () => {
       try {
+        // Check network connectivity on mobile
+        if (!navigator.onLine) {
+          console.error('❌ No internet connection');
+          setStatus('error');
+          setMessage('No internet connection detected. Please check your connection and try again.');
+          return;
+        }
+        
+        console.log('📡 Internet connection: OK');
+        
         // Ensure user is authenticated (anonymously if needed)
         console.log('🔐 Checking Firebase auth...');
+        console.log('   Device User Agent:', navigator.userAgent);
+        
         if (!auth.currentUser) {
           console.log('   No user logged in, signing in anonymously...');
-          await signInAnonymously(auth);
-          console.log('   ✅ Anonymous sign-in successful');
+          const result = await signInAnonymously(auth);
+          console.log('   ✅ Anonymous sign-in successful:', result.user.uid);
+          // Wait longer on mobile for Firebase to fully initialize
+          const isMobile = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
+          const waitTime = isMobile ? 2000 : 500;
+          console.log('   Waiting', waitTime, 'ms for Firebase to initialize...');
+          await new Promise(resolve => setTimeout(resolve, waitTime));
         } else {
           console.log('   ✅ User already authenticated:', auth.currentUser.uid);
         }
       } catch (authError) {
-        console.error('⚠️ Anonymous auth failed (non-blocking):', authError);
+        console.error('⚠️ Anonymous auth failed:', authError);
+        // Force retry on mobile
+        if (/Android|iPhone|iPad/i.test(navigator.userAgent)) {
+          console.log('   Retrying anonymous auth on mobile...');
+          try {
+            await signInAnonymously(auth);
+            await new Promise(resolve => setTimeout(resolve, 2500));
+          } catch (retryError) {
+            console.error('⚠️ Retry failed:', retryError);
+          }
+        }
       }
 
       // Get token and email from URL
@@ -41,10 +68,20 @@ export function EmailVerificationModal({ isOpen, onClose }: EmailVerificationMod
       let token = null;
       let email = null;
       
+      console.log('🔍 URL Parsing Debug:');
+      console.log('   Full URL:', window.location.href);
+      console.log('   Pathname:', window.location.pathname);
+      console.log('   Search:', window.location.search);
+      console.log('   Hash:', window.location.hash);
+      console.log('   Path parts:', pathParts);
+      console.log('   Path parts length:', pathParts.length);
+      
       if (pathParts[0] === 'verify' && pathParts.length >= 3) {
         token = decodeURIComponent(pathParts[1]);
         email = decodeURIComponent(pathParts[2]);
         console.log('📧 Verification link parsed from path');
+        console.log('   Token from path:', token);
+        console.log('   Email from path:', email);
       } else {
         // Fallback to query/hash params
         const urlParams = new URLSearchParams(window.location.search);
@@ -56,10 +93,12 @@ export function EmailVerificationModal({ isOpen, onClose }: EmailVerificationMod
         if (email) email = decodeURIComponent(email);
         if (token) token = decodeURIComponent(token);
         
-        console.log('📧 Verification link parsed from query/hash params');
+        if (token || email) {
+          console.log('📧 Verification link parsed from query/hash params');
+        }
       }
 
-      const debug = `URL: ${window.location.href}\nPathname: ${window.location.pathname}\nToken: ${token}\nEmail: ${email}`;
+      const debug = `URL: ${window.location.href}\nPathname: ${window.location.pathname}\nPath Parts: ${JSON.stringify(pathParts)}\nToken: ${token}\nEmail: ${email}`;
       setDebugInfo(debug);
 
       console.log('📧 URL Parameters:');
@@ -77,7 +116,32 @@ export function EmailVerificationModal({ isOpen, onClose }: EmailVerificationMod
 
       try {
         console.log('🔐 Verifying email with Firestore:', email);
-        const result = await verifyEmail(email, token);
+        
+        // Add retry logic for mobile
+        let result = false;
+        const isMobile = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
+        const maxRetries = isMobile ? 3 : 1;
+        
+        for (let attempt = 1; attempt <= maxRetries; attempt++) {
+          console.log(`📱 Verification attempt ${attempt}/${maxRetries}`);
+          try {
+            result = await verifyEmail(email, token);
+            if (result) break; // Success, exit retry loop
+            
+            // If failed, wait before retry on mobile
+            if (attempt < maxRetries) {
+              console.log('   Retrying in 1.5 seconds...');
+              await new Promise(resolve => setTimeout(resolve, 1500));
+            }
+          } catch (attemptError) {
+            console.error(`   Attempt ${attempt} failed:`, attemptError);
+            if (attempt < maxRetries) {
+              await new Promise(resolve => setTimeout(resolve, 1500));
+            } else {
+              throw attemptError;
+            }
+          }
+        }
 
         if (result) {
           setStatus('success');
@@ -92,8 +156,16 @@ export function EmailVerificationModal({ isOpen, onClose }: EmailVerificationMod
         setStatus('error');
         const errorMsg = error.message || 'An error occurred during verification. Please try again.';
         setMessage(errorMsg);
-        setDebugInfo(prev => prev + `\n\nError: ${errorMsg}\n${error.toString()}`);
+        const errorDetails = `
+Error: ${errorMsg}
+Error Type: ${error.name || 'Unknown'}
+Error Code: ${error.code || 'N/A'}
+Stack: ${error.stack || 'N/A'}
+Auth User: ${auth.currentUser ? auth.currentUser.uid : 'No user'}
+`;
+        setDebugInfo(prev => prev + '\n' + errorDetails);
         console.error('❌ Verification error:', error);
+        console.error('   Full error details:', errorDetails);
       }
     };
 
