@@ -35,13 +35,71 @@ const AppContent: React.FC = () => {
 
   // Initialize localStorage with required data on first load
   useEffect(() => {
+    console.log('🚀 App.tsx useEffect - checking for verification link');
+    console.log('📍 Current URL:', window.location.href);
+    console.log('📍 Pathname:', window.location.pathname);
+    console.log('📍 Search:', window.location.search);
+    console.log('📍 Hash:', window.location.hash);
+    
     if (!localStorage.getItem('notifications')) {
       localStorage.setItem('notifications', JSON.stringify([]));
     }
 
     // Check if user arrived from email verification link
-    const urlParams = new URLSearchParams(window.location.search);
-    if (urlParams.has('token') && urlParams.has('email')) {
+    const pathname = window.location.pathname;
+    const pathParts = pathname.split('/').filter(p => p); // Split and remove empty parts
+    
+    console.log('🔍 Path parts:', pathParts);
+    
+    // Try to extract token and email from path: /verify/TOKEN/EMAIL
+    let token = null;
+    let email = null;
+    
+    if (pathParts[0] === 'verify' && pathParts.length >= 3) {
+      token = decodeURIComponent(pathParts[1]);
+      email = decodeURIComponent(pathParts[2]);
+      console.log('✅ Verification link detected from path');
+      console.log('   Token:', token);
+      console.log('   Email:', email);
+    } else {
+      // Fallback: try query params or hash
+      const urlParams = new URLSearchParams(window.location.search);
+      const hashParams = new URLSearchParams(window.location.hash.slice(1));
+      token = urlParams.get('token') || hashParams.get('token');
+      email = urlParams.get('email') || hashParams.get('email');
+      
+      if (token && email) {
+        console.log('✅ Verification link detected from query/hash params');
+      }
+    }
+    
+    if (token && email) {
+      console.log('✅ Verification link detected, opening modal');
+      console.log('   Setting showEmailVerificationModal = true');
+      setShowEmailVerificationModal(true);
+      return;
+    }
+    
+    console.log('⚠️ No token/email found in URL');
+    
+    // Check for /verify path and redirect from localhost if needed
+    if (pathname.includes('/verify')) {
+      console.log('✅ /verify path detected');
+      const isLocalhost = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1';
+      
+      if (isLocalhost) {
+        // If on localhost, redirect to network IP
+        const networkIP = localStorage.getItem('networkIP');
+        const networkPort = localStorage.getItem('networkPort') || '3000';
+        
+        if (networkIP && networkIP !== 'localhost' && networkIP !== '127.0.0.1') {
+          const newUrl = `http://${networkIP}:${networkPort}${pathname}${window.location.search}${window.location.hash}`;
+          console.log('🔄 Redirecting verification to network IP:', newUrl);
+          window.location.href = newUrl;
+          return;
+        }
+      }
+      
       setShowEmailVerificationModal(true);
     }
   }, []);
@@ -82,11 +140,14 @@ const AppContent: React.FC = () => {
 
   // Handle page navigation, with special handling for ticket URLs
   const handleNavigate = (page: string) => {
+    console.log('🧭 handleNavigate called with:', page);
     if (page.startsWith('tickets/')) {
       // Extract ticket ID from "tickets/{ticketId}"
       const ticketId = page.split('/')[1];
+      console.log('🎫 Extracted ticketId:', ticketId);
       setSelectedTicketId(ticketId);
       setCurrentPage('tickets');
+      console.log('📄 Set currentPage to: tickets');
     } else {
       setSelectedTicketId(null);
       setCurrentPage(page);

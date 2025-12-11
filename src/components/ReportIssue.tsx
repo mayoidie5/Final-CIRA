@@ -173,7 +173,7 @@ export const ReportIssue: React.FC<ReportIssueProps> = ({ onSuccess }) => {
         <h2 className="text-gray-800 dark:text-white mb-6">Report an Issue</h2>
 
         <form onSubmit={handleSubmit} className="space-y-4 sm:space-y-6">
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4 sm:gap-6">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-3 sm:gap-4 md:gap-5 lg:gap-6">
             <div>
               <label className="block text-gray-700 dark:text-gray-300 mb-2">Campus *</label>
               <select

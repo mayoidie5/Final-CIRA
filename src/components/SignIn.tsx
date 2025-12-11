@@ -11,7 +11,7 @@ interface SignInProps {
 }
 
 export const SignIn: React.FC<SignInProps> = ({ onSwitchToSignUp, onSignInSuccess }) => {
-  const { login, resendVerification } = useAuth();
+  const { login, resendVerification, sendPasswordReset } = useAuth();
   const { theme, setTheme } = useTheme();
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
@@ -19,6 +19,11 @@ export const SignIn: React.FC<SignInProps> = ({ onSwitchToSignUp, onSignInSucces
   const [error, setError] = useState('');
   const [needsVerification, setNeedsVerification] = useState(false);
   const [loading, setLoading] = useState(false);
+  const [showForgotPasswordModal, setShowForgotPasswordModal] = useState(false);
+  const [forgotPasswordEmail, setForgotPasswordEmail] = useState('');
+  const [forgotPasswordMessage, setForgotPasswordMessage] = useState('');
+  const [forgotPasswordError, setForgotPasswordError] = useState('');
+  const [forgotPasswordLoading, setForgotPasswordLoading] = useState(false);
 
   const isDark = theme === 'dark';
 
@@ -48,6 +53,31 @@ export const SignIn: React.FC<SignInProps> = ({ onSwitchToSignUp, onSignInSucces
     const fullEmail = email.includes('@') ? email : `${email}@plv.edu.ph`;
     await resendVerification(fullEmail);
     alert('Verification email sent!');
+  };
+
+  const handleForgotPassword = async () => {
+    setForgotPasswordError('');
+    setForgotPasswordMessage('');
+    setForgotPasswordLoading(true);
+
+    // Ensure email has domain if not already present
+    const resetEmail = forgotPasswordEmail.includes('@') 
+      ? forgotPasswordEmail 
+      : `${forgotPasswordEmail}@plv.edu.ph`;
+
+    const result = await sendPasswordReset(resetEmail);
+    setForgotPasswordLoading(false);
+
+    if (result.success) {
+      setForgotPasswordMessage('Password reset link has been sent to your email. Please check your inbox.');
+      setForgotPasswordEmail('');
+      // Close modal after 3 seconds
+      setTimeout(() => {
+        setShowForgotPasswordModal(false);
+      }, 3000);
+    } else {
+      setForgotPasswordError(result.error || 'Failed to send password reset email');
+    }
   };
 
   const handleEmailChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -143,6 +173,7 @@ export const SignIn: React.FC<SignInProps> = ({ onSwitchToSignUp, onSignInSucces
             <div className="text-right">
               <button
                 type="button"
+                onClick={() => setShowForgotPasswordModal(true)}
                 className="text-blue-600 dark:text-blue-400 hover:underline"
               >
                 Forgot Password?
@@ -203,6 +234,81 @@ export const SignIn: React.FC<SignInProps> = ({ onSwitchToSignUp, onSignInSucces
           </div>
         </div>
       </div>
+      {/* Forgot Password Modal */}
+      {showForgotPasswordModal && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+          <div className="bg-white dark:bg-gray-800 rounded-lg shadow-xl p-6 max-w-md w-full">
+            <h2 className="text-xl font-semibold text-gray-900 dark:text-white mb-4">Reset Password</h2>
+            
+            {forgotPasswordMessage ? (
+              <div className="p-4 bg-green-50 dark:bg-green-900/20 border border-green-200 dark:border-green-800 rounded-lg mb-4">
+                <p className="text-green-700 dark:text-green-300 text-sm">{forgotPasswordMessage}</p>
+              </div>
+            ) : (
+              <>
+                <p className="text-gray-600 dark:text-gray-400 mb-4">
+                  Enter your email address and we'll send you a link to reset your password.
+                </p>
+
+                <div className="mb-4">
+                  <label className="block text-gray-700 dark:text-gray-300 mb-2">Email</label>
+                  <div className="relative">
+                    <input
+                      type="text"
+                      value={forgotPasswordEmail}
+                      onChange={(e) => {
+                        let value = e.target.value.trim();
+                        if (value.endsWith('@plv.edu.ph')) {
+                          value = value.replace('@plv.edu.ph', '');
+                        }
+                        setForgotPasswordEmail(value);
+                      }}
+                      onBlur={() => {
+                        if (forgotPasswordEmail && !forgotPasswordEmail.includes('@')) {
+                          setForgotPasswordEmail(`${forgotPasswordEmail}@plv.edu.ph`);
+                        }
+                      }}
+                      className="w-full px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 dark:bg-gray-700 dark:text-white"
+                      placeholder="your.email"
+                    />
+                    <span className="absolute right-4 top-1/2 -translate-y-1/2 text-gray-500 dark:text-gray-400 pointer-events-none">
+                      @plv.edu.ph
+                    </span>
+                  </div>
+                </div>
+
+                {forgotPasswordError && (
+                  <div className="flex items-center gap-2 p-3 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-lg text-red-600 dark:text-red-400 mb-4">
+                    <AlertCircle size={20} />
+                    <span className="text-sm">{forgotPasswordError}</span>
+                  </div>
+                )}
+
+                <div className="flex gap-3">
+                  <button
+                    onClick={handleForgotPassword}
+                    disabled={forgotPasswordLoading || !forgotPasswordEmail}
+                    className="flex-1 bg-blue-600 hover:bg-blue-700 text-white py-2 rounded-lg transition-colors disabled:opacity-50"
+                  >
+                    {forgotPasswordLoading ? 'Sending...' : 'Send Reset Link'}
+                  </button>
+                  <button
+                    onClick={() => {
+                      setShowForgotPasswordModal(false);
+                      setForgotPasswordEmail('');
+                      setForgotPasswordError('');
+                      setForgotPasswordMessage('');
+                    }}
+                    className="flex-1 bg-gray-200 hover:bg-gray-300 dark:bg-gray-700 dark:hover:bg-gray-600 text-gray-800 dark:text-white py-2 rounded-lg transition-colors"
+                  >
+                    Cancel
+                  </button>
+                </div>
+              </>
+            )}
+          </div>
+        </div>
+      )}
     </div>
   );
 };

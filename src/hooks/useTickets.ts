@@ -3,6 +3,8 @@ import { Ticket } from '../types';
 import { useAuth } from '../contexts/AuthContext';
 import { useNotifications } from '../contexts/NotificationContext';
 import * as ticketService from '../services/ticketService';
+import { collection, query, where, getDocs } from 'firebase/firestore';
+import { db } from '../config/firebase';
 
 export const useTickets = () => {
   const { user } = useAuth();
@@ -183,8 +185,24 @@ export const useTickets = () => {
   const notifyAdmin = async (message: string, ticketId: string) => {
     try {
       console.log('📢 Notifying admin:', message);
-      // In a real implementation, query all admins from Firestore
-      await addNotification('admin', ticketId, message);
+      // Query Firestore to find the admin user(s)
+      const usersRef = collection(db, 'users');
+      const adminQuery = query(usersRef, where('role', '==', 'admin'));
+      const adminSnapshot = await getDocs(adminQuery);
+      
+      if (adminSnapshot.empty) {
+        console.warn('⚠️ No admin users found');
+        return;
+      }
+
+      // Notify all admins
+      const notificationPromises = adminSnapshot.docs.map(doc => {
+        const adminId = doc.id;
+        return addNotification(adminId, ticketId, message, `/tickets/${ticketId}`);
+      });
+      
+      await Promise.all(notificationPromises);
+      console.log('✅ Notification sent to', adminSnapshot.docs.length, 'admin(s)');
     } catch (err) {
       console.error('❌ Error notifying admin:', err);
     }

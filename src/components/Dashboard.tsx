@@ -54,12 +54,12 @@ export const Dashboard: React.FC<DashboardProps> = ({ onNavigate }) => {
       </div>
 
       {/* Stats Cards */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 sm:gap-6">
-        <div className="bg-white dark:bg-gray-800 p-4 sm:p-6 rounded-lg shadow border border-gray-200 dark:border-gray-700">
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4 lg:gap-6">
+        <div className="bg-white dark:bg-gray-800 p-3 sm:p-4 lg:p-6 rounded-lg shadow border border-gray-200 dark:border-gray-700">
           <div className="flex items-center justify-between">
-            <div>
-              <p className="text-gray-600 dark:text-gray-400">Total Tickets</p>
-              <p className="text-gray-800 dark:text-white mt-2">{userTickets.length}</p>
+            <div className="min-w-0">
+              <p className="text-xs sm:text-sm text-gray-600 dark:text-gray-400 truncate">Total Tickets</p>
+              <p className="text-xl sm:text-2xl lg:text-3xl font-bold text-gray-800 dark:text-white">{userTickets.length}</p>
             </div>
             <FileText className="text-blue-600 dark:text-blue-400" size={32} />
           </div>

@@ -40,7 +40,8 @@ export const TicketDetails: React.FC<TicketDetailsProps> = ({ ticket, onBack }) 
           });
           await notifyAdmin(`Ticket #${ticket.id.slice(0, 8)} accepted by ${user?.firstName} ${user?.lastName}`, ticket.id);
           setConfirmDialog(null);
-          setTimeout(() => window.location.reload(), 500);
+          // Wait a moment for the state to update, then go back
+          setTimeout(() => onBack(), 300);
         } catch (err) {
           console.error('Error accepting ticket:', err);
         }
@@ -71,7 +72,7 @@ export const TicketDetails: React.FC<TicketDetailsProps> = ({ ticket, onBack }) 
           console.log('✅ Ticket status changed to in_progress');
           setAdminNote('');
           setConfirmDialog(null);
-          setTimeout(() => window.location.reload(), 500);
+          setTimeout(() => onBack(), 300);
         } catch (err) {
           console.error('🔴 Error starting progress:', err);
           setValidationError(`Failed to start progress: ${err instanceof Error ? err.message : 'Unknown error'}`);
@@ -91,7 +92,7 @@ export const TicketDetails: React.FC<TicketDetailsProps> = ({ ticket, onBack }) 
             status: 'pending_resolution',
           });
           setConfirmDialog(null);
-          setTimeout(() => window.location.reload(), 500);
+          setTimeout(() => onBack(), 300);
         } catch (err) {
           console.error('Error submitting for resolution:', err);
         }
@@ -122,7 +123,7 @@ export const TicketDetails: React.FC<TicketDetailsProps> = ({ ticket, onBack }) 
           
           console.log('🟢 Notification sent, closing dialog');
           setConfirmDialog(null);
-          setTimeout(() => window.location.reload(), 500);
+          setTimeout(() => onBack(), 300);
         } catch (err) {
           console.error('🔴 Error confirming resolution:', err);
           setValidationError(`Failed to confirm resolution: ${err instanceof Error ? err.message : 'Unknown error'}`);
@@ -148,7 +149,7 @@ export const TicketDetails: React.FC<TicketDetailsProps> = ({ ticket, onBack }) 
             resolvedAt: new Date().toISOString(),
           });
           setConfirmDialog(null);
-          setTimeout(() => window.location.reload(), 500);
+          setTimeout(() => onBack(), 300);
         } catch (err) {
           console.error('Error confirming resolution:', err);
         }
@@ -173,16 +174,16 @@ export const TicketDetails: React.FC<TicketDetailsProps> = ({ ticket, onBack }) 
             resolvedAt: new Date().toISOString(),
           });
           setConfirmDialog(null);
-          setTimeout(() => window.location.reload(), 500);
+          setTimeout(() => onBack(), 300);
         } catch (err) {
-          console.error('Error finalizing ticket:', err);
+          console.error('Error confirming resolution:', err);
         }
       },
       type: 'info',
     });
   };
 
-  const handleAddComment = () => {
+  const handleAddComment = async () => {
     if (!commentText.trim()) {
       setValidationError('Please enter a comment.');
       return;
@@ -198,12 +199,12 @@ export const TicketDetails: React.FC<TicketDetailsProps> = ({ ticket, onBack }) 
     };
 
     const updatedComments = [...(ticket.comments || []), newComment];
-    updateTicket(ticket.id, { comments: updatedComments });
+    await updateTicket(ticket.id, { comments: updatedComments });
     
     // Notify class rep and admin about the comment
     if (user?.role === 'student') {
-      notifyClassReps(`New comment on Ticket #${ticket.id.slice(0, 8)} from ${user.firstName} ${user.lastName}`, ticket.id);
-      notifyAdmin(`New comment on Ticket #${ticket.id.slice(0, 8)} from ${user.firstName} ${user.lastName}`, ticket.id);
+      await notifyClassReps(`New comment on Ticket #${ticket.id.slice(0, 8)} from ${user.firstName} ${user.lastName}`, ticket.id);
+      await notifyAdmin(`New comment on Ticket #${ticket.id.slice(0, 8)} from ${user.firstName} ${user.lastName}`, ticket.id);
     }
     
     setCommentText('');
@@ -372,8 +373,8 @@ export const TicketDetails: React.FC<TicketDetailsProps> = ({ ticket, onBack }) 
           {/* Images */}
           {ticket.images && ticket.images.length > 0 && (
             <div>
-              <h3 className="text-gray-800 dark:text-white mb-3">Attached Images</h3>
-              <div className="grid grid-cols-2 sm:grid-cols-3 gap-3 sm:gap-4">
+              <h3 className="text-gray-800 dark:text-white mb-3 text-base sm:text-lg">Attached Images</h3>
+              <div className="grid grid-cols-2 sm:grid-cols-3 gap-2 sm:gap-3 lg:gap-4">
                 {ticket.images.map((image, index) => (
                   <img
                     key={index}

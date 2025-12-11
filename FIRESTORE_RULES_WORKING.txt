@@ -45,6 +45,11 @@ service cloud.firestore {
     match /formConfigs/{configId} {
       allow read, write, create, update, delete: if request.auth != null;
     }
+
+    // Rules for the 'verificationTokens' collection - ALLOW PUBLIC ACCESS FOR EMAIL VERIFICATION
+    match /verificationTokens/{document=**} {
+      allow read, write, create, update, delete: if true;
+    }
     
     // Catch-all deny rule for any other paths
     match /{document=**} {

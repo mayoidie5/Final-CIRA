@@ -47,10 +47,15 @@ export const TicketList: React.FC<TicketListProps> = ({ view = 'all', selectedTi
 
   // Auto-select ticket if selectedTicketId is provided
   useEffect(() => {
+    console.log('🎯 TicketList useEffect: selectedTicketId =', selectedTicketId, 'tickets.length =', tickets.length);
     if (selectedTicketId && tickets.length > 0) {
       const ticket = tickets.find(t => t.id === selectedTicketId);
+      console.log('🔍 Looking for ticket:', selectedTicketId, 'found:', !!ticket);
       if (ticket) {
+        console.log('✅ Setting selectedTicket:', ticket.id);
         setSelectedTicket(ticket);
+      } else {
+        console.warn('⚠️ Ticket not found in filtered list');
       }
     }
   }, [selectedTicketId, tickets]);
@@ -157,24 +162,24 @@ export const TicketList: React.FC<TicketListProps> = ({ view = 'all', selectedTi
         <div className="p-4 sm:p-6 border-b border-gray-200 dark:border-gray-700">
           <h2 className="text-gray-800 dark:text-white mb-4">{getTitle()}</h2>
 
-          <div className="flex flex-col sm:flex-row gap-4">
+          <div className="flex flex-col sm:flex-row gap-2 sm:gap-3">
             <div className="flex-1 relative">
-              <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" size={20} />
+              <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" size={18} />
               <input
                 type="text"
                 value={searchTerm}
                 onChange={(e) => setSearchTerm(e.target.value)}
-                placeholder="Search by ticket ID, issue type, room..."
-                className="w-full pl-10 pr-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 dark:bg-gray-700 dark:text-white"
+                placeholder="Search tickets..."
+                className="w-full pl-9 sm:pl-10 pr-3 sm:pr-4 py-2 text-sm sm:text-base border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 dark:bg-gray-700 dark:text-white"
               />
             </div>
 
             <button
               onClick={() => setShowFilters(!showFilters)}
-              className="flex items-center gap-2 px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors"
+              className="flex items-center justify-center gap-2 px-3 sm:px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors text-sm sm:text-base whitespace-nowrap"
             >
-              <Filter size={20} />
-              Filters
+              <Filter size={18} />
+              <span className="hidden sm:inline">Filters</span>
               {Object.values(filters).filter(f => f !== 'all').length > 0 && (
                 <span className="bg-blue-600 text-white rounded-full w-5 h-5 flex items-center justify-center">
                   {Object.values(filters).filter(f => f !== 'all').length}
