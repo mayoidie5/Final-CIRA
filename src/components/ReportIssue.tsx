@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Upload, X, AlertCircle } from 'lucide-react';
+import { Upload, X, AlertCircle, Loader } from 'lucide-react';
 import { useTickets } from '../hooks/useTickets';
 import { getFormConfig } from '../services/formConfigService';
 import { DEFAULT_FORM_CONFIG } from '../utils/defaultFormConfig';
@@ -14,6 +14,7 @@ export const ReportIssue: React.FC<ReportIssueProps> = ({ onSuccess }) => {
   const { createTicket } = useTickets();
   const [formConfig, setFormConfig] = useState<FormConfig>(DEFAULT_FORM_CONFIG);
   const [isLoadingConfig, setIsLoadingConfig] = useState(true);
+  const [isSubmitting, setIsSubmitting] = useState(false);
   
   const [formData, setFormData] = useState({
     campus: '',
@@ -113,6 +114,12 @@ export const ReportIssue: React.FC<ReportIssueProps> = ({ onSuccess }) => {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    
+    // Prevent multiple submissions
+    if (isSubmitting) {
+      return;
+    }
+    
     setSuccess(false);
     setValidationError('');
 
@@ -128,6 +135,7 @@ export const ReportIssue: React.FC<ReportIssueProps> = ({ onSuccess }) => {
     }
 
     try {
+      setIsSubmitting(true);
       const issueSubtype = formData.issueSubtype === 'Others' ? formData.otherIssueSubtype : formData.issueSubtype;
 
       // Wait for ticket to be created
@@ -164,6 +172,7 @@ export const ReportIssue: React.FC<ReportIssueProps> = ({ onSuccess }) => {
       const errorMessage = err instanceof Error ? err.message : 'Failed to submit ticket';
       console.error('❌ Error submitting ticket:', errorMessage);
       setValidationError(errorMessage);
+      setIsSubmitting(false);
     }
   };
 
@@ -354,12 +363,21 @@ export const ReportIssue: React.FC<ReportIssueProps> = ({ onSuccess }) => {
           <div className="flex gap-4">
             <button
               type="submit"
-              className="flex-1 bg-blue-600 hover:bg-blue-700 text-white py-2 rounded-lg transition-colors"
+              disabled={isSubmitting}
+              className="flex-1 flex items-center justify-center gap-2 bg-blue-600 hover:bg-blue-700 disabled:bg-blue-400 disabled:cursor-not-allowed text-white py-2 rounded-lg transition-colors"
             >
-              Submit Report
+              {isSubmitting ? (
+                <>
+                  <Loader size={18} className="animate-spin" />
+                  <span>Submitting...</span>
+                </>
+              ) : (
+                'Submit Report'
+              )}
             </button>
             <button
               type="button"
+              disabled={isSubmitting}
               onClick={() => {
                 setFormData({
                   campus: '',
@@ -373,7 +391,7 @@ export const ReportIssue: React.FC<ReportIssueProps> = ({ onSuccess }) => {
                 });
                 setImages([]);
               }}
-              className="px-6 bg-gray-200 dark:bg-gray-700 hover:bg-gray-300 dark:hover:bg-gray-600 text-gray-700 dark:text-gray-300 py-2 rounded-lg transition-colors"
+              className="px-6 bg-gray-200 dark:bg-gray-700 hover:bg-gray-300 dark:hover:bg-gray-600 disabled:bg-gray-400 disabled:cursor-not-allowed text-gray-700 dark:text-gray-300 py-2 rounded-lg transition-colors"
             >
               Clear
             </button>

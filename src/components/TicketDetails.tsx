@@ -3,10 +3,14 @@ import { ArrowLeft, Calendar, MapPin, Wrench, FileText, CheckCircle, Clock, Mess
 import { Ticket } from '../types';
 import { useAuth } from '../contexts/AuthContext';
 import { useTickets } from '../hooks/useTickets';
+import { useNotifications } from '../contexts/NotificationContext';
 import { ValidationAlert } from './ValidationAlert';
 import { ConfirmDialog } from './ConfirmDialog';
 import { ImageLightbox } from './ImageLightbox';
 import { ProgressStepper } from './ProgressStepper';
+import { SuccessToast } from './SuccessToast';
+import { collection, query, where, getDocs } from 'firebase/firestore';
+import { db } from '../config/firebase';
 
 interface TicketDetailsProps {
   ticket: Ticket;
@@ -16,10 +20,12 @@ interface TicketDetailsProps {
 export const TicketDetails: React.FC<TicketDetailsProps> = ({ ticket, onBack }) => {
   const { user } = useAuth();
   const { updateTicket, notifyAdmin, notifyClassReps } = useTickets();
+  const { addNotification } = useNotifications();
   const [adminNote, setAdminNote] = useState('');
   const [resolutionNote, setResolutionNote] = useState('');
   const [commentText, setCommentText] = useState('');
   const [validationError, setValidationError] = useState('');
+  const [successMessage, setSuccessMessage] = useState('');
   const [lightboxImage, setLightboxImage] = useState<number | null>(null);
   const [confirmDialog, setConfirmDialog] = useState<{ 
     title: string; 
@@ -189,25 +195,57 @@ export const TicketDetails: React.FC<TicketDetailsProps> = ({ ticket, onBack }) 
       return;
     }
 
-    const newComment = {
-      id: Date.now().toString() + Math.random(),
-      userId: user!.id,
-      userEmail: user!.email,
-      userName: `${user!.firstName} ${user!.lastName}`,
-      message: commentText,
-      createdAt: new Date().toISOString(),
-    };
+    try {
+      setValidationError('');
+      const newComment = {
+        id: Date.now().toString() + Math.random(),
+        userId: user!.id,
+        userEmail: user!.email,
+        userName: `${user!.firstName} ${user!.lastName}`,
+        message: commentText,
+        createdAt: new Date().toISOString(),
+      };
 
-    const updatedComments = [...(ticket.comments || []), newComment];
-    await updateTicket(ticket.id, { comments: updatedComments });
-    
-    // Notify class rep and admin about the comment
-    if (user?.role === 'student') {
-      await notifyClassReps(`New comment on Ticket #${ticket.id.slice(0, 8)} from ${user.firstName} ${user.lastName}`, ticket.id);
-      await notifyAdmin(`New comment on Ticket #${ticket.id.slice(0, 8)} from ${user.firstName} ${user.lastName}`, ticket.id);
+      const updatedComments = [...(ticket.comments || []), newComment];
+      await updateTicket(ticket.id, { comments: updatedComments });
+      
+      // Notify relevant users about the comment
+      if (user?.role === 'student') {
+        // Student commenting: notify class reps and admin
+        await notifyClassReps(`💬 New comment on Ticket #${ticket.id.slice(0, 8)} from ${user.firstName} ${user.lastName}`, ticket.id);
+        await notifyAdmin(`💬 New comment on Ticket #${ticket.id.slice(0, 8)} from ${user.firstName} ${user.lastName}`, ticket.id);
+      } else if (user?.role === 'class_rep') {
+        // Class rep commenting: notify admin
+        try {
+          const usersRef = collection(db, 'users');
+          const adminQuery = query(usersRef, where('role', '==', 'admin'));
+          const adminSnapshot = await getDocs(adminQuery);
+          
+          if (!adminSnapshot.empty) {
+            const notificationPromises = adminSnapshot.docs.map(doc => {
+              const adminId = doc.id;
+              return addNotification(
+                adminId,
+                ticket.id,
+                `💬 New comment on Ticket #${ticket.id.slice(0, 8)} from ${user.firstName} ${user.lastName}`,
+                `/tickets/${ticket.id}`
+              );
+            });
+            await Promise.all(notificationPromises);
+          }
+        } catch (err) {
+          console.warn('⚠️ Failed to notify admin about comment:', err);
+        }
+      }
+      
+      setCommentText('');
+      setSuccessMessage('Comment added successfully!');
+      console.log('✅ Comment added successfully');
+    } catch (err) {
+      const errorMessage = err instanceof Error ? err.message : 'Failed to add comment';
+      console.error('❌ Error adding comment:', errorMessage);
+      setValidationError(errorMessage);
     }
-    
-    setCommentText('');
   };
 
   const canAccept = user?.role === 'class_rep' && ticket.status === 'submitted';
@@ -216,7 +254,7 @@ export const TicketDetails: React.FC<TicketDetailsProps> = ({ ticket, onBack }) 
   const canConfirmResolution = (user?.role === 'class_rep' || user?.role === 'admin') && ticket.status === 'pending_resolution' && ticket.studentConfirmedResolution;
   const canStudentConfirmResolution = user?.role === 'student' && ticket.status === 'pending_resolution' && ticket.userId === user?.id && !ticket.studentConfirmedResolution;
   const canClassRepFinalize = user?.role === 'class_rep' && ticket.status === 'request_for_resolution' && ticket.userId !== user?.id;
-  const canComment = user?.role === 'student' && ticket.userId === user?.id && ticket.status !== 'resolved';
+  const canComment = (user?.role === 'student' && ticket.userId === user?.id && ticket.status !== 'resolved') || (user?.role === 'class_rep' && ticket.userId === user?.id && ticket.status !== 'resolved');
 
   const getStatusColor = (status: string) => {
     switch (status) {
@@ -283,6 +321,7 @@ export const TicketDetails: React.FC<TicketDetailsProps> = ({ ticket, onBack }) 
 
   return (
     <div className="max-w-4xl mx-auto p-4 sm:p-6">
+      {successMessage && <SuccessToast message={successMessage} onClose={() => setSuccessMessage('')} />}
       <button
         onClick={onBack}
         className="flex items-center gap-2 text-blue-600 dark:text-blue-400 hover:underline mb-4 sm:mb-6"

@@ -198,15 +198,15 @@ export const Header: React.FC<HeaderProps> = ({ onOpenSettings, onNavigate, onOp
               </button>
 
               {showProfileMenu && (
-                <div className="absolute right-0 mt-2 w-64 bg-white dark:bg-gray-800 rounded-lg shadow-lg border border-gray-200 dark:border-gray-700 z-50">
+                <div className="absolute right-0 mt-2 w-80 bg-white dark:bg-gray-800 rounded-lg shadow-lg border border-gray-200 dark:border-gray-700 z-50">
                   <div className="p-4 border-b border-gray-200 dark:border-gray-700">
-                    <p className="text-gray-800 dark:text-white">{user?.firstName} {user?.lastName}</p>
-                    <p className="text-gray-500 dark:text-gray-400">{user?.email}</p>
-                    <p className="text-gray-500 dark:text-gray-400 mt-1">
+                    <p className="text-gray-800 dark:text-white break-words">{user?.firstName} {user?.lastName}</p>
+                    <p className="text-gray-500 dark:text-gray-400 break-all text-sm">{user?.email}</p>
+                    <p className="text-gray-500 dark:text-gray-400 mt-1 text-sm">
                       {user?.role === 'admin' ? 'Admin' : user?.role === 'class_rep' ? 'Class Representative' : 'Student'}
                     </p>
                     {(user?.course || user?.section || user?.yearLevel) && (
-                      <p className="text-gray-500 dark:text-gray-400 mt-1">
+                      <p className="text-gray-500 dark:text-gray-400 mt-1 text-sm break-words">
                         {user?.course} {user?.yearLevel && `- ${user.yearLevel}`} {user?.section && `- Section ${user.section}`}
                       </p>
                     )}

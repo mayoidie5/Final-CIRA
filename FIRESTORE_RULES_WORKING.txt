@@ -51,8 +51,13 @@ service cloud.firestore {
     }
 
     // Rules for the 'verificationTokens' collection - ALLOW PUBLIC ACCESS FOR EMAIL VERIFICATION
-    match /verificationTokens/{document=**} {
-      allow read, write, create, update, delete: if true;
+    // This allows unauthenticated users to write tokens during signup
+    match /verificationTokens/{email} {
+      allow read: if true;
+      allow write: if true;
+      allow create: if true;
+      allow update: if true;
+      allow delete: if true;
     }
     
     // Catch-all deny rule for any other paths
