@@ -6,8 +6,13 @@ service cloud.firestore {
     // Rules for the 'users' collection
     match /users/{userId} {
       allow create: if request.auth != null && request.auth.uid == userId;
-      allow read, update: if request.auth != null && request.auth.uid == userId;
-      allow read, write: if request.auth != null;
+      // Allow reading own user or any authenticated user
+      allow read: if request.auth != null;
+      // Allow any authenticated user to update users (for email verification from anonymous auth)
+      // This includes approval and rejection of pending users by admins
+      allow update: if request.auth != null;
+      // Allow deletion only by own user
+      allow delete: if request.auth != null && request.auth.uid == userId;
     }
 
     // Rules for the 'tickets' collection - PERMISSIVE FOR TESTING
@@ -47,8 +52,13 @@ service cloud.firestore {
     }
 
     // Rules for the 'verificationTokens' collection - ALLOW PUBLIC ACCESS FOR EMAIL VERIFICATION
-    match /verificationTokens/{document=**} {
-      allow read, write, create, update, delete: if true;
+    // This allows unauthenticated users to write tokens during signup
+    match /verificationTokens/{email} {
+      allow read: if true;
+      allow write: if true;
+      allow create: if true;
+      allow update: if true;
+      allow delete: if true;
     }
     
     // Catch-all deny rule for any other paths

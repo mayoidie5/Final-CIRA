@@ -49,15 +49,23 @@ export const sendVerificationEmail = async (email: string) => {
     const tokenDocRef = doc(db, 'verificationTokens', email.toLowerCase());
     const expiresAt = new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString();
     
-    await setDoc(tokenDocRef, {
-      token: verificationToken,
-      createdAt: new Date().toISOString(),
-      expiresAt: expiresAt,
-    });
-    console.log('💾 Token stored in Firestore');
-    console.log('   Email (doc ID):', email.toLowerCase());
-    console.log('   Token:', verificationToken);
-    console.log('   Expires at:', expiresAt);
+    try {
+      console.log('💾 Attempting to store token in Firestore...');
+      await setDoc(tokenDocRef, {
+        token: verificationToken,
+        createdAt: new Date().toISOString(),
+        expiresAt: expiresAt,
+      });
+      console.log('💾 Token stored in Firestore');
+      console.log('   Email (doc ID):', email.toLowerCase());
+      console.log('   Token:', verificationToken);
+      console.log('   Expires at:', expiresAt);
+    } catch (firestoreError: any) {
+      console.error('❌ Failed to store token in Firestore:', firestoreError);
+      console.error('   Error code:', firestoreError.code);
+      console.error('   Error message:', firestoreError.message);
+      throw firestoreError;
+    }
     
     // Build verification link using path-based URL (most reliable for email clients)
     // Format: /verify/token/email - this survives email client link rewriting better than query params or hashes
@@ -85,8 +93,8 @@ export const sendVerificationEmail = async (email: string) => {
 };
 
 export const generateVerificationToken = (): string => {
-  // Use a more reliable token format that works better with URL encoding
-  const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789';
+  // Use unambiguous characters only (exclude I, l, O, 0, 1 to prevent confusion)
+  const chars = 'ABCDEFGHJKMNPQRSTUVWXYZabcdefghijkmnopqrstuvwxyz23456789';
   let token = '';
   for (let i = 0; i < 32; i++) {
     token += chars.charAt(Math.floor(Math.random() * chars.length));
@@ -142,6 +150,7 @@ export const verifyEmail = async (email: string, token: string): Promise<boolean
     console.log('📦 Document data retrieved');
     console.log('   Firestore token:', JSON.stringify(data?.token));
     console.log('   Received token:', JSON.stringify(token));
+    console.log('   Token used before:', data?.used || false);
     
     if (!data?.token) {
       console.error('❌ No token field in document');
@@ -182,27 +191,53 @@ export const verifyEmail = async (email: string, token: string): Promise<boolean
     // Step 4: Mark user as verified
     console.log('✅ Token valid! Marking user as verified...');
     const usersRef = collection(db, 'users');
-    const userQuery = query(usersRef, where('email', '==', email));
-    const userSnapshot = await getDocs(userQuery);
     
-    console.log('   Users found:', userSnapshot.size);
+    let userUpdated = false;
+    let usersUpdatedCount = 0;
     
-    if (!userSnapshot.empty) {
-      const userDoc = userSnapshot.docs[0];
-      await updateDoc(doc(db, 'users', userDoc.id), {
-        isVerified: true,
-      });
-      console.log('   ✅ User updated with isVerified=true');
-    } else {
-      console.warn('   ⚠️ User not found, but token is valid');
+    try {
+      console.log('   Attempting to find and update all matching users...');
+      // Get all users and find ALL with matching email (case-insensitive)
+      const allUsersSnapshot = await getDocs(usersRef);
+      console.log('   Total users in database:', allUsersSnapshot.size);
+      
+      for (const userDocSnapshot of allUsersSnapshot.docs) {
+        const userData = userDocSnapshot.data();
+        if (userData.email && userData.email.toLowerCase() === email) {
+          console.log('   Found matching user:', userDocSnapshot.id, '- updating...');
+          try {
+            await updateDoc(doc(db, 'users', userDocSnapshot.id), {
+              isVerified: true,
+            });
+            console.log('   ✅ User marked as verified in Firestore');
+            userUpdated = true;
+            usersUpdatedCount++;
+            // DON'T break - update ALL matching users
+          } catch (updateError: any) {
+            console.error('   ❌ Failed to update user:', updateError.message);
+          }
+        }
+      }
+      
+      console.log('   Total users updated:', usersUpdatedCount);
+      if (!userUpdated) {
+        console.warn('   ⚠️ No matching user found, but token was valid');
+      }
+    } catch (queryError: any) {
+      console.error('❌ Error accessing users collection:', queryError.message);
+      console.warn('⚠️ Proceeding anyway - user may need to refresh after verification');
     }
 
-    // Step 5: Delete token
+    // Step 5: Delete or mark token as used
     try {
-      await deleteDoc(tokenDocRef);
-      console.log('🗑️  Token deleted after verification');
+      // Mark token as used instead of deleting, so users can re-verify if needed
+      await updateDoc(tokenDocRef, {
+        used: true,
+        verifiedAt: new Date().toISOString(),
+      });
+      console.log('✅ Token marked as used');
     } catch (e) {
-      console.warn('⚠️ Could not delete token:', e);
+      console.warn('⚠️ Could not mark token as used:', e);
     }
 
     console.log('✅ Verification complete!');

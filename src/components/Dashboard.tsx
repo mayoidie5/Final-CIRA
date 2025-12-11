@@ -2,7 +2,8 @@ import React from 'react';
 import { useAuth } from '../contexts/AuthContext';
 import { useTickets } from '../hooks/useTickets';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer, PieChart, Pie, Cell, LineChart, Line } from 'recharts';
-import { FileText, CheckCircle, Clock, AlertTriangle, AlertCircle, TrendingUp, Plus } from 'lucide-react';
+import { FileText, CheckCircle, Clock, AlertTriangle, AlertCircle, TrendingUp, Plus, RotateCcw } from 'lucide-react';
+import { restoreSampleTickets } from '../utils/restoreSampleTickets';
 
 interface DashboardProps {
   onNavigate: (page: string) => void;
@@ -28,67 +29,104 @@ export const Dashboard: React.FC<DashboardProps> = ({ onNavigate }) => {
   const resolvedCount = userTickets.filter(t => t.status === 'resolved').length;
   const pendingCount = userTickets.filter(t => t.status === 'pending_resolution' || t.status === 'request_for_resolution').length;
 
+  // Use appropriate data based on user role
+  const ticketsForCharts = user?.role === 'admin' ? tickets : userTickets;
+
   const issueTypeData = [
-    { name: 'Hardware', value: tickets.filter(t => t.issueType === 'Hardware').length },
-    { name: 'Software', value: tickets.filter(t => t.issueType === 'Software').length },
-    { name: 'Network', value: tickets.filter(t => t.issueType === 'Network').length },
-    { name: 'Others', value: tickets.filter(t => t.issueType === 'Others').length },
+    { name: 'Hardware', value: ticketsForCharts.filter(t => t.issueType === 'Hardware').length },
+    { name: 'Software', value: ticketsForCharts.filter(t => t.issueType === 'Software').length },
+    { name: 'Network', value: ticketsForCharts.filter(t => t.issueType === 'Network').length },
+    { name: 'Others', value: ticketsForCharts.filter(t => t.issueType === 'Others').length },
   ];
 
   const campusData = [
-    { name: 'Maysan', value: tickets.filter(t => t.campus === 'Maysan Campus').length },
-    { name: 'Annex', value: tickets.filter(t => t.campus === 'Annex Campus').length },
+    { name: 'Maysan', value: ticketsForCharts.filter(t => t.campus === 'Maysan Campus').length },
+    { name: 'Annex', value: ticketsForCharts.filter(t => t.campus === 'Annex Campus').length },
   ];
 
   const COLORS = ['#3B82F6', '#10B981', '#F59E0B', '#EF4444'];
 
   return (
     <div className="max-w-7xl mx-auto p-4 sm:p-6 space-y-4 sm:space-y-6">
-      <div>
-        <h2 className="text-gray-800 dark:text-white mb-2">
-          Welcome back, {user?.firstName}!
-        </h2>
-        <p className="text-gray-600 dark:text-gray-400">
-          {user?.role === 'admin' ? 'Admin Dashboard' : user?.role === 'class_rep' ? 'Class Representative Dashboard' : 'Student Dashboard'}
-        </p>
+      <div className="flex items-center justify-between">
+        <div>
+          <h2 className="text-gray-800 dark:text-white mb-2">
+            Welcome back, {user?.firstName}!
+          </h2>
+          <p className="text-gray-600 dark:text-gray-400">
+            {user?.role === 'admin' ? 'Admin Dashboard' : user?.role === 'class_rep' && !user?.isPending ? 'Class Representative Dashboard' : user?.role === 'class_rep' && user?.isPending ? 'Class Representative Dashboard (Pending Approval)' : 'Student Dashboard'}
+          </p>
+        </div>
+        {user?.role === 'admin' && (
+          <button
+            onClick={async () => {
+              if (window.confirm('Restore sample tickets? This will add test data.')) {
+                try {
+                  const count = await restoreSampleTickets();
+                  alert(`✅ Restored ${count} sample tickets!`);
+                  window.location.reload();
+                } catch (error) {
+                  alert('❌ Error restoring tickets: ' + (error as any).message);
+                }
+              }
+            }}
+            className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
+          >
+            <RotateCcw size={18} />
+            Restore Data
+          </button>
+        )}
       </div>
+
+      {/* Pending Class Rep Approval Banner */}
+      {user?.role === 'class_rep' && user?.isPending && (
+        <div className="bg-yellow-50 dark:bg-yellow-900/20 border border-yellow-300 dark:border-yellow-700 rounded-lg p-4 flex items-start gap-3">
+          <AlertCircle className="text-yellow-600 dark:text-yellow-400 flex-shrink-0 mt-0.5" size={20} />
+          <div>
+            <h3 className="font-semibold text-yellow-800 dark:text-yellow-200">Pending Admin Approval</h3>
+            <p className="text-yellow-700 dark:text-yellow-300 text-sm mt-1">
+              Your class representative request is pending approval from an administrator. You currently have student access. Once approved, you'll gain class representative privileges.
+            </p>
+          </div>
+        </div>
+      )}
 
       {/* Stats Cards */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4 lg:gap-6">
         <div className="bg-white dark:bg-gray-800 p-3 sm:p-4 lg:p-6 rounded-lg shadow border border-gray-200 dark:border-gray-700">
           <div className="flex items-center justify-between">
             <div className="min-w-0">
-              <p className="text-xs sm:text-sm text-gray-600 dark:text-gray-400 truncate">Total Tickets</p>
-              <p className="text-xl sm:text-2xl lg:text-3xl font-bold text-gray-800 dark:text-white">{userTickets.length}</p>
+              <p className="text-gray-600 dark:text-gray-400 truncate">Total Tickets</p>
+              <p className="text-gray-800 dark:text-white mt-2">{userTickets.length}</p>
             </div>
             <FileText className="text-blue-600 dark:text-blue-400" size={32} />
           </div>
         </div>
 
-        <div className="bg-white dark:bg-gray-800 p-4 sm:p-6 rounded-lg shadow border border-gray-200 dark:border-gray-700">
+        <div className="bg-white dark:bg-gray-800 p-3 sm:p-4 lg:p-6 rounded-lg shadow border border-gray-200 dark:border-gray-700">
           <div className="flex items-center justify-between">
-            <div>
-              <p className="text-gray-600 dark:text-gray-400">In Progress</p>
+            <div className="min-w-0">
+              <p className="text-gray-600 dark:text-gray-400 truncate">In Progress</p>
               <p className="text-gray-800 dark:text-white mt-2">{inProgressCount}</p>
             </div>
             <Clock className="text-yellow-600 dark:text-yellow-400" size={32} />
           </div>
         </div>
 
-        <div className="bg-white dark:bg-gray-800 p-4 sm:p-6 rounded-lg shadow border border-gray-200 dark:border-gray-700">
+        <div className="bg-white dark:bg-gray-800 p-3 sm:p-4 lg:p-6 rounded-lg shadow border border-gray-200 dark:border-gray-700">
           <div className="flex items-center justify-between">
-            <div>
-              <p className="text-gray-600 dark:text-gray-400">Resolved</p>
+            <div className="min-w-0">
+              <p className="text-gray-600 dark:text-gray-400 truncate">Resolved</p>
               <p className="text-gray-800 dark:text-white mt-2">{resolvedCount}</p>
             </div>
             <CheckCircle className="text-green-600 dark:text-green-400" size={32} />
           </div>
         </div>
 
-        <div className="bg-white dark:bg-gray-800 p-4 sm:p-6 rounded-lg shadow border border-gray-200 dark:border-gray-700">
+        <div className="bg-white dark:bg-gray-800 p-3 sm:p-4 lg:p-6 rounded-lg shadow border border-gray-200 dark:border-gray-700">
           <div className="flex items-center justify-between">
-            <div>
-              <p className="text-gray-600 dark:text-gray-400">Pending Resolution</p>
+            <div className="min-w-0">
+              <p className="text-gray-600 dark:text-gray-400 truncate">Pending Resolution</p>
               <p className="text-gray-800 dark:text-white mt-2">{pendingCount}</p>
             </div>
             <AlertCircle className="text-orange-600 dark:text-orange-400" size={32} />

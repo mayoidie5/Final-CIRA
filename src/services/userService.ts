@@ -122,7 +122,12 @@ export const approveUser = async (userId: string): Promise<void> => {
 export const rejectUser = async (userId: string): Promise<void> => {
   try {
     const userRef = doc(db, USERS_COLLECTION, userId);
-    await deleteDoc(userRef);
+    // Mark as rejected instead of deleting - this respects Firestore security rules
+    await updateDoc(userRef, {
+      isPending: false,
+      isVerified: false,
+      rejectedAt: Timestamp.now(),
+    });
   } catch (error) {
     console.error('Error rejecting user:', error);
     throw new Error('Failed to reject user');

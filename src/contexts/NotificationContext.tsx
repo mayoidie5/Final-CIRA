@@ -37,8 +37,10 @@ export const NotificationProvider: React.FC<{ children: React.ReactNode }> = ({ 
     targetPage?: string
   ) => {
     try {
+      console.log('🔔 Creating notification for userId:', userId, 'Message:', message);
       await firebaseAddNotification(userId, ticketId, message, targetPage);
-      // Refetch notifications
+      // Refetch notifications for the TARGET user only
+      console.log('🔄 Refetching notifications for:', userId);
       await fetchNotifications(userId);
     } catch (error) {
       console.error('❌ Error adding notification:', error);

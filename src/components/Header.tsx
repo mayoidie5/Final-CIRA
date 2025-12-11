@@ -80,7 +80,14 @@ export const Header: React.FC<HeaderProps> = ({ onOpenSettings, onNavigate, onOp
       <div className="w-full px-4 sm:px-6 lg:px-8">
         <div className="flex items-center justify-between h-16">
           {/* Left side - Logo and Title */}
-          <div className="flex items-center gap-2 sm:gap-3 min-w-0">
+          <button 
+            onClick={() => {
+              if (onNavigate) {
+                onNavigate('dashboard');
+              }
+            }}
+            className="flex items-center gap-2 sm:gap-3 min-w-0 hover:opacity-80 transition-opacity cursor-pointer"
+          >
             <img 
               src={theme === 'dark' ? '/assets/MainLogoWhite.png' : '/assets/MainLogoNavyBlue.png'}
               alt="CIRA Logo" 
@@ -90,7 +97,7 @@ export const Header: React.FC<HeaderProps> = ({ onOpenSettings, onNavigate, onOp
               <span className="hidden sm:inline">Comlab Issue Reporting</span>
               <span className="sm:hidden">Comlab</span>
             </h1>
-          </div>
+          </button>
 
           {/* Right side - Tutorial, Notifications and Profile */}
           <div className="flex items-center gap-1 sm:gap-2 lg:gap-4">
@@ -198,15 +205,15 @@ export const Header: React.FC<HeaderProps> = ({ onOpenSettings, onNavigate, onOp
               </button>
 
               {showProfileMenu && (
-                <div className="absolute right-0 mt-2 w-64 bg-white dark:bg-gray-800 rounded-lg shadow-lg border border-gray-200 dark:border-gray-700 z-50">
+                <div className="absolute right-0 mt-2 w-80 bg-white dark:bg-gray-800 rounded-lg shadow-lg border border-gray-200 dark:border-gray-700 z-50">
                   <div className="p-4 border-b border-gray-200 dark:border-gray-700">
-                    <p className="text-gray-800 dark:text-white">{user?.firstName} {user?.lastName}</p>
-                    <p className="text-gray-500 dark:text-gray-400">{user?.email}</p>
-                    <p className="text-gray-500 dark:text-gray-400 mt-1">
-                      {user?.role === 'admin' ? 'Admin' : user?.role === 'class_rep' ? 'Class Representative' : 'Student'}
+                    <p className="text-gray-800 dark:text-white break-words">{user?.firstName} {user?.lastName}</p>
+                    <p className="text-gray-500 dark:text-gray-400 break-all text-sm">{user?.email}</p>
+                    <p className="text-gray-500 dark:text-gray-400 mt-1 text-sm">
+                      {user?.role === 'admin' ? 'Admin' : user?.role === 'class_rep' && user?.isPending ? 'Class Representative (Pending)' : user?.role === 'class_rep' ? 'Class Representative' : 'Student'}
                     </p>
                     {(user?.course || user?.section || user?.yearLevel) && (
-                      <p className="text-gray-500 dark:text-gray-400 mt-1">
+                      <p className="text-gray-500 dark:text-gray-400 mt-1 text-sm break-words">
                         {user?.course} {user?.yearLevel && `- ${user.yearLevel}`} {user?.section && `- Section ${user.section}`}
                       </p>
                     )}
