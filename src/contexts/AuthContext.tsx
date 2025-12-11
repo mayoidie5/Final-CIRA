@@ -4,7 +4,7 @@ import { initializeAdminAccount } from '../utils/initAdmin';
 import { sendVerificationEmail } from '../utils/emailService';
 import { auth, db } from '../config/firebase';
 import { createUserWithEmailAndPassword, signInWithEmailAndPassword, signOut, sendPasswordResetEmail } from 'firebase/auth';
-import { doc, setDoc, collection, getDoc, updateDoc, connectFirestoreEmulator, enableNetwork } from 'firebase/firestore';
+import { doc, setDoc, collection, getDoc, updateDoc, connectFirestoreEmulator, enableNetwork, getDocs } from 'firebase/firestore';
 
 interface AuthContextType {
   user: User | null;
