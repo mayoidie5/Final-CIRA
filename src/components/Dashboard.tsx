@@ -7,9 +7,10 @@ import { restoreSampleTickets } from '../utils/restoreSampleTickets';
 
 interface DashboardProps {
   onNavigate: (page: string) => void;
+  onShowPendingDeletionAlert?: () => void;
 }
 
-export const Dashboard: React.FC<DashboardProps> = ({ onNavigate }) => {
+export const Dashboard: React.FC<DashboardProps> = ({ onNavigate, onShowPendingDeletionAlert }) => {
   const { user } = useAuth();
   const { tickets } = useTickets();
 
@@ -49,7 +50,7 @@ export const Dashboard: React.FC<DashboardProps> = ({ onNavigate }) => {
 
   return (
     <div className="max-w-7xl mx-auto p-4 sm:p-6 space-y-4 sm:space-y-6">
-      <div className="flex items-center justify-between">
+      <div className="flex items-center justify-between gap-4 mb-6">
         <div>
           <h2 className="text-gray-800 dark:text-white mb-2">
             Welcome back, {user?.firstName}!
@@ -58,6 +59,17 @@ export const Dashboard: React.FC<DashboardProps> = ({ onNavigate }) => {
             {user?.role === 'admin' ? 'Admin Dashboard' : user?.role === 'class_rep' && !user?.isPending ? 'Class Representative Dashboard' : user?.role === 'class_rep' && user?.isPending ? 'Class Representative Dashboard (Pending Approval)' : 'Student Dashboard'}
           </p>
         </div>
+
+        {/* Pending Deletion Warning Button - Right Side */}
+        {user?.pendingDeletion && onShowPendingDeletionAlert && (
+          <button
+            onClick={onShowPendingDeletionAlert}
+            className="flex-shrink-0 bg-red-600 hover:bg-red-700 text-white px-6 py-3 rounded-lg shadow font-semibold flex items-center gap-2 transition-colors whitespace-nowrap"
+          >
+            <span className="text-xl">⚠️</span>
+            <span className="hidden sm:inline">Deletion Notice</span>
+          </button>
+        )}
       </div>
 
       {/* Pending Class Rep Approval Banner */}

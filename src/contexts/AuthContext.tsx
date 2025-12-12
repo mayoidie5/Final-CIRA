@@ -153,6 +153,23 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
       let foundUser = userDoc.data() as User;
 
+      // Convert Firestore Timestamps to ISO strings
+      if (foundUser.deletionDate && typeof foundUser.deletionDate === 'object' && 'toDate' in foundUser.deletionDate) {
+        foundUser.deletionDate = (foundUser.deletionDate as any).toDate().toISOString();
+      }
+      if (foundUser.createdAt && typeof foundUser.createdAt === 'object' && 'toDate' in foundUser.createdAt) {
+        foundUser.createdAt = (foundUser.createdAt as any).toDate().toISOString();
+      }
+
+      // CHECK IF ACCOUNT IS DELETED
+      if (foundUser.deletionDate && !foundUser.pendingDeletion) {
+        console.log('🚫 Account has been deleted:', email);
+        return { 
+          success: false, 
+          error: 'This account has been deleted. If you believe this is a mistake, please contact the administrator to recover your account.' 
+        };
+      }
+
       // CHECK FIREBASE AUTH EMAIL VERIFICATION - THIS IS THE SOURCE OF TRUTH
       console.log('🔍 Checking email verification status:');
       console.log('   User ID:', firebaseUser.uid);

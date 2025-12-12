@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { Eye, EyeOff, AlertCircle, Moon, Sun, Mail, CheckCircle, Loader } from 'lucide-react';
 import { useAuth } from '../contexts/AuthContext';
 import { useTheme } from '../contexts/ThemeContext';
+import { AccountDeleted } from './AccountDeleted';
 import logoNavyBlue from '../../assets/MainLogoNavyBlue.png';
 import logoWhite from '../../assets/MainLogoWhite.png';
 
@@ -24,6 +25,8 @@ export const SignIn: React.FC<SignInProps> = ({ onSwitchToSignUp, onSwitchToForg
   const [verificationSent, setVerificationSent] = useState(false);
   const [verificationError, setVerificationError] = useState('');
   const [loading, setLoading] = useState(false);
+  const [deletedEmail, setDeletedEmail] = useState('');
+  const [showAccountDeleted, setShowAccountDeleted] = useState(false);
 
   const isDark = theme === 'dark';
 
@@ -31,6 +34,7 @@ export const SignIn: React.FC<SignInProps> = ({ onSwitchToSignUp, onSwitchToForg
     e.preventDefault();
     setError('');
     setShowVerificationUI(false);
+    setShowAccountDeleted(false);
     setLoading(true);
 
     // Auto-append @plv.edu.ph to email if not already present
@@ -46,6 +50,10 @@ export const SignIn: React.FC<SignInProps> = ({ onSwitchToSignUp, onSwitchToForg
       setShowVerificationUI(true);
       setVerificationSent(false);
       setVerificationError('');
+    } else if (result.error?.includes('deleted')) {
+      // Account has been deleted
+      setDeletedEmail(fullEmail);
+      setShowAccountDeleted(true);
     } else {
       setError(result.error || 'Login failed');
     }
@@ -89,6 +97,11 @@ export const SignIn: React.FC<SignInProps> = ({ onSwitchToSignUp, onSwitchToForg
       setEmail(`${email}@plv.edu.ph`);
     }
   };
+
+  // Show account deleted screen if applicable
+  if (showAccountDeleted && deletedEmail) {
+    return <AccountDeleted email={deletedEmail} />;
+  }
 
   return (
     <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-blue-50 to-indigo-100 dark:from-gray-900 dark:to-gray-800 p-4">
@@ -141,7 +154,7 @@ export const SignIn: React.FC<SignInProps> = ({ onSwitchToSignUp, onSwitchToForg
                         onClick={handleBackToLogin}
                         className="w-full px-6 py-3 bg-blue-600 hover:bg-blue-700 text-white font-medium rounded-lg transition-colors"
                       >
-                        Back to Login
+                        Back  to  Login
                       </button>
                     </>
                   ) : (
@@ -168,16 +181,16 @@ export const SignIn: React.FC<SignInProps> = ({ onSwitchToSignUp, onSwitchToForg
                         <button
                           onClick={handleResendVerification}
                           disabled={verificationLoading}
-                          className="w-full px-4 py-2.5 bg-blue-600 hover:bg-blue-700 disabled:bg-gray-400 disabled:cursor-not-allowed text-white font-medium rounded-lg transition-colors flex items-center justify-center gap-2"
+                          className="w-full px-4 py-3 bg-blue-600 hover:bg-blue-700 disabled:bg-gray-400 disabled:cursor-not-allowed text-white font-medium rounded-lg transition-colors flex items-center justify-center gap-3"
                         >
                           {verificationLoading && <Loader size={18} className="animate-spin" />}
-                          {verificationLoading ? 'Sending...' : 'Send Verification Email'}
+                          {verificationLoading ? 'Sending . . .' : 'Send  Verification  Email'}
                         </button>
                         <button
                           onClick={handleBackToLogin}
-                          className="w-full px-4 py-2.5 bg-gray-200 dark:bg-gray-700 hover:bg-gray-300 dark:hover:bg-gray-600 text-gray-900 dark:text-white font-medium rounded-lg transition-colors"
+                          className="w-full px-4 py-3 bg-gray-200 dark:bg-gray-700 hover:bg-gray-300 dark:hover:bg-gray-600 text-gray-900 dark:text-white font-medium rounded-lg transition-colors"
                         >
-                          Back to Login
+                          Back  to  Login
                         </button>
                       </div>
                     </>

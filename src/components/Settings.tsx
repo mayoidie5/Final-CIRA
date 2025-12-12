@@ -47,7 +47,7 @@ export const Settings: React.FC<SettingsProps> = ({ onClose }) => {
     onClose();
   };
 
-  const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
     const { name, value } = e.target;
     setFormData(prev => ({ ...prev, [name]: value }));
   };
@@ -165,13 +165,17 @@ export const Settings: React.FC<SettingsProps> = ({ onClose }) => {
                   <Building2 size={16} />
                   Department
                 </label>
-                <input
-                  type="text"
+                <select
                   name="department"
                   value={formData.department}
                   onChange={handleChange}
                   className="w-full px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 dark:bg-gray-700 dark:text-white"
-                />
+                >
+                  <option value="">Select Department</option>
+                  <option value="BSIT">BSIT</option>
+                  <option value="BSCE">BSCE</option>
+                  <option value="BSEE">BSEE</option>
+                </select>
               </div>
 
               <div>

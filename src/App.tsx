@@ -15,6 +15,7 @@ import { FormEditor } from './components/FormEditor';
 import { Archive } from './components/Archive';
 import { Settings } from './components/Settings';
 import { Tutorial } from './components/Tutorial';
+import { PendingDeletionAlert } from './components/PendingDeletionAlert';
 import { LayoutDashboard, FileText, Plus, Users, Edit, Archive as ArchiveIcon, Menu, X, HelpCircle, CheckCircle } from 'lucide-react';
 
 const AppContent: React.FC = () => {
@@ -33,6 +34,7 @@ const AppContent: React.FC = () => {
   });
   const [verificationSuccess, setVerificationSuccess] = useState(false);
   const [processingVerification, setProcessingVerification] = useState(false);
+  const [showPendingDeletionAlert, setShowPendingDeletionAlert] = useState(false);
 
   // Check for verification link on mount
   useEffect(() => {
@@ -156,6 +158,14 @@ const AppContent: React.FC = () => {
   useEffect(() => {
     localStorage.setItem('lastPage', currentPage);
   }, [currentPage]);
+
+  // Check for pending deletion when user logs in
+  useEffect(() => {
+    if (user && user.pendingDeletion && user.deletionDate && user.deletionReason) {
+      // Always show alert when user logs in if pending deletion
+      setShowPendingDeletionAlert(true);
+    }
+  }, [user?.id]);
 
   // When user logs in, navigate to dashboard
   useEffect(() => {
@@ -326,7 +336,7 @@ const AppContent: React.FC = () => {
   const renderPage = () => {
     switch (currentPage) {
       case 'dashboard':
-        return <Dashboard onNavigate={handleNavigate} />;
+        return <Dashboard onNavigate={handleNavigate} onShowPendingDeletionAlert={() => setShowPendingDeletionAlert(true)} />;
       case 'report':
         return <ReportIssue onSuccess={() => setCurrentPage('dashboard')} />;
       case 'tickets':
@@ -342,7 +352,7 @@ const AppContent: React.FC = () => {
       case 'archive':
         return <Archive />;
       default:
-        return <Dashboard onNavigate={setCurrentPage} />;
+        return <Dashboard onNavigate={setCurrentPage} onShowPendingDeletionAlert={() => setShowPendingDeletionAlert(true)} />;
     }
   };
 
@@ -424,6 +434,19 @@ const AppContent: React.FC = () => {
 
       {showSettings && <Settings onClose={() => setShowSettings(false)} />}
       {showTutorial && <Tutorial onClose={() => setShowTutorial(false)} />}
+
+      {/* Pending Deletion Alert */}
+      {showPendingDeletionAlert && user && user.pendingDeletion && user.deletionDate && user.deletionReason && (
+        <PendingDeletionAlert
+          userName={`${user.firstName} ${user.lastName}`}
+          deletionDate={user.deletionDate}
+          deletionReason={user.deletionReason}
+          onClose={() => {
+            setShowPendingDeletionAlert(false);
+            // Alert will re-show when user navigates or data refreshes
+          }}
+        />
+      )}
     </div>
   );
 };
