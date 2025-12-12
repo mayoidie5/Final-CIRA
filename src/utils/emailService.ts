@@ -69,7 +69,9 @@ export const sendVerificationEmail = async (email: string) => {
     
     // Build verification link using path-based URL (most reliable for email clients)
     // Format: /verify/token/email - this survives email client link rewriting better than query params or hashes
-    const verificationLink = `http://${hostname}:${port}/verify/${encodeURIComponent(verificationToken)}/${encodeURIComponent(email.toLowerCase())}`;
+    // Use https:// for production, http:// for localhost development
+    const protocol = hostname === 'localhost' ? 'http' : 'https';
+    const verificationLink = `${protocol}://${hostname}${port !== '80' && port !== '443' ? ':' + port : ''}/verify/${encodeURIComponent(verificationToken)}/${encodeURIComponent(email.toLowerCase())}`;
 
     // Template parameters
     const templateParams = {
