@@ -259,16 +259,26 @@ const AppContent: React.FC = () => {
   }
 
   // Handle page navigation, with special handling for ticket URLs
-  const handleNavigate = (page: string) => {
-    console.log('🧭 handleNavigate called with:', page);
+  const handleNavigate = (page: string, view?: 'my-tickets' | 'review' | 'all') => {
+    console.log('🧭 handleNavigate called with:', page, 'view:', view);
     if (page.startsWith('tickets/')) {
       // Extract ticket ID from "tickets/{ticketId}"
       const ticketId = page.split('/')[1];
       console.log('🎫 Extracted ticketId:', ticketId);
       setSelectedTicketId(ticketId);
-      setCurrentPage('tickets');
+      
+      // Determine the page to set based on view parameter or user role
+      let pageToSet = 'tickets';
+      if (view) {
+        pageToSet = view;
+      } else if (user?.role === 'class_rep' && !user?.isPending) {
+        // Default class reps to 'review' view when clicking notifications
+        pageToSet = 'review';
+      }
+      
+      setCurrentPage(pageToSet);
       window.history.pushState({}, '', `/tickets/${ticketId}`);
-      console.log('📄 Set currentPage to: tickets');
+      console.log('📄 Set currentPage to:', pageToSet);
     } else {
       setSelectedTicketId(null);
       setCurrentPage(page);
