@@ -5,6 +5,7 @@ import { NotificationProvider } from './contexts/NotificationContext';
 import { SignIn } from './components/SignIn';
 import { SignUp } from './components/SignUp';
 import { ForgotPassword } from './components/ForgotPassword';
+import { ResetPassword } from './components/ResetPassword';
 import { Header } from './components/Header';
 import { Dashboard } from './components/Dashboard';
 import { ReportIssue } from './components/ReportIssue';
@@ -18,13 +19,14 @@ import { LayoutDashboard, FileText, Plus, Users, Edit, Archive as ArchiveIcon, M
 
 const AppContent: React.FC = () => {
   const { user } = useAuth();
-  const [authView, setAuthView] = useState<'signin' | 'signup' | 'forgot-password'>('signin');
+  const [authView, setAuthView] = useState<'signin' | 'signup' | 'forgot-password' | 'reset-password'>('signin');
   const [currentPage, setCurrentPage] = useState(() => {
     return localStorage.getItem('lastPage') || 'dashboard';
   });
   const [selectedTicketId, setSelectedTicketId] = useState<string | null>(null);
   const [showSettings, setShowSettings] = useState(false);
   const [showTutorial, setShowTutorial] = useState(false);
+  const [resetPasswordCode, setResetPasswordCode] = useState<string | null>(null);
   const [sidebarOpen, setSidebarOpen] = useState(() => {
     // Sidebar closed by default on mobile (< 1024px), open on desktop
     return typeof window !== 'undefined' ? window.innerWidth >= 1024 : true;
@@ -34,15 +36,51 @@ const AppContent: React.FC = () => {
   // Check for verification link on mount
   useEffect(() => {
     const url = new URL(window.location.href);
+    const pathname = url.pathname;
     const mode = url.searchParams.get('mode');
     const oobCode = url.searchParams.get('oobCode');
     const verifying = url.searchParams.get('verifying');
-    const page = url.searchParams.get('page');
     
-    // Handle forgot password page request
-    if (page === 'forgot-password') {
-      setAuthView('forgot-password');
+    // Handle password reset code from email link
+    if (mode === 'resetPassword' && oobCode) {
+      console.log('🔐 Detected password reset link');
+      setResetPasswordCode(oobCode);
+      setAuthView('reset-password');
       return;
+    }
+    
+    // Handle route-based navigation for logged-in users
+    if (user && pathname !== '/') {
+      if (pathname.startsWith('/tickets/')) {
+        // Extract ticket ID from /tickets/{ticketId}
+        const ticketId = pathname.split('/')[2];
+        setSelectedTicketId(ticketId);
+        setCurrentPage('tickets');
+        return;
+      } else if (pathname.startsWith('/')) {
+        // Navigate to page (remove leading slash)
+        const page = pathname.substring(1);
+        if (page) {
+          setCurrentPage(page);
+          return;
+        }
+      }
+    }
+    
+    // Handle route-based navigation for non-authenticated users
+    if (!user) {
+      if (pathname === '/signup') {
+        setAuthView('signup');
+        return;
+      } else if (pathname === '/forgot-password') {
+        setAuthView('forgot-password');
+        return;
+      } else if (pathname === '/' || pathname === '/signin') {
+        // Default to signin if on root or signin path
+        window.history.replaceState({}, '', '/signin');
+        setAuthView('signin');
+        return;
+      }
     }
     
     // Check if user came from Firebase verification (verifying=true means they just verified)
@@ -67,7 +105,7 @@ const AppContent: React.FC = () => {
         setVerificationSuccess(true);
       }, 500);
     }
-  }, []);
+  }, [user]);
 
   // Save current page to localStorage whenever it changes
   useEffect(() => {
@@ -116,7 +154,14 @@ const AppContent: React.FC = () => {
       return (
         <>
           <SignIn
-            onSwitchToSignUp={() => setAuthView('signup')}
+            onSwitchToSignUp={() => {
+              setAuthView('signup');
+              window.history.pushState({}, '', '/signup');
+            }}
+            onSwitchToForgotPassword={() => {
+              setAuthView('forgot-password');
+              window.history.pushState({}, '', '/forgot-password');
+            }}
             onSignInSuccess={() => setCurrentPage('dashboard')}
           />
         </>
@@ -124,13 +169,25 @@ const AppContent: React.FC = () => {
     } else if (authView === 'signup') {
       return (
         <>
-          <SignUp onSwitchToSignIn={() => setAuthView('signin')} />
+          <SignUp onSwitchToSignIn={() => {
+            setAuthView('signin');
+            window.history.pushState({}, '', '/signin');
+          }} />
         </>
       );
     } else if (authView === 'forgot-password') {
       return (
         <>
-          <ForgotPassword onBackToLogin={() => setAuthView('signin')} />
+          <ForgotPassword onBackToLogin={() => {
+            setAuthView('signin');
+            window.history.pushState({}, '', '/signin');
+          }} />
+        </>
+      );
+    } else if (authView === 'reset-password') {
+      return (
+        <>
+          <ResetPassword oobCode={resetPasswordCode || undefined} />
         </>
       );
     }
@@ -145,10 +202,12 @@ const AppContent: React.FC = () => {
       console.log('🎫 Extracted ticketId:', ticketId);
       setSelectedTicketId(ticketId);
       setCurrentPage('tickets');
+      window.history.pushState({}, '', `/tickets/${ticketId}`);
       console.log('📄 Set currentPage to: tickets');
     } else {
       setSelectedTicketId(null);
       setCurrentPage(page);
+      window.history.pushState({}, '', `/${page}`);
     }
   };
 

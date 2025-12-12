@@ -7,10 +7,11 @@ import logoWhite from '../../assets/MainLogoWhite.png';
 
 interface SignInProps {
   onSwitchToSignUp: () => void;
+  onSwitchToForgotPassword: () => void;
   onSignInSuccess: () => void;
 }
 
-export const SignIn: React.FC<SignInProps> = ({ onSwitchToSignUp, onSignInSuccess }) => {
+export const SignIn: React.FC<SignInProps> = ({ onSwitchToSignUp, onSwitchToForgotPassword, onSignInSuccess }) => {
   const { login, resendVerification } = useAuth();
   const { theme, setTheme } = useTheme();
   const [email, setEmail] = useState('');
@@ -143,7 +144,7 @@ export const SignIn: React.FC<SignInProps> = ({ onSwitchToSignUp, onSignInSucces
             <div className="text-right">
               <button
                 type="button"
-                onClick={() => window.location.href = window.location.origin + '/?page=forgot-password'}
+                onClick={onSwitchToForgotPassword}
                 className="text-blue-600 dark:text-blue-400 hover:underline"
               >
                 Forgot Password?

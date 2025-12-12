@@ -1,7 +1,7 @@
 import React, { createContext, useContext, useState, useEffect } from 'react';
 import { User } from '../types';
 import { initializeAdminAccount } from '../utils/initAdmin';
-import { sendVerificationEmail, markEmailAsVerified } from '../utils/emailService';
+import { sendVerificationEmail, markEmailAsVerified, sendPasswordResetEmailWithCustomUrl } from '../utils/emailService';
 import { auth, db } from '../config/firebase';
 import { createUserWithEmailAndPassword, signInWithEmailAndPassword, signOut, sendPasswordResetEmail, onAuthStateChanged, applyActionCode, isSignInWithEmailLink, parseActionCodeURL, updatePassword } from 'firebase/auth';
 import { doc, setDoc, collection, getDoc, updateDoc, connectFirestoreEmulator, enableNetwork, getDocs } from 'firebase/firestore';
@@ -303,7 +303,9 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
   const sendPasswordReset = async (email: string) => {
     try {
-      await sendPasswordResetEmail(auth, email);
+      // Send password reset email with custom action URL
+      // This uses ActionCodeSettings to customize where the password reset link redirects
+      await sendPasswordResetEmailWithCustomUrl(email);
       console.log('✅ Password reset email sent to:', email);
       return { success: true };
     } catch (error: any) {
