@@ -170,9 +170,15 @@ export const ResetPassword: React.FC<ResetPasswordProps> = ({ oobCode }) => {
                 </div>
                 <div>
                   <h2 className="text-2xl font-bold text-gray-900 dark:text-white mb-2">Password Reset!</h2>
-                  <p className="text-gray-600 dark:text-gray-400">
-                    Your password has been successfully reset. You'll be redirected to sign in shortly.
+                  <p className="text-gray-600 dark:text-gray-400 mb-6">
+                    Your password has been successfully reset.
                   </p>
+                  <a
+                    href="/signin"
+                    className="inline-block px-6 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg transition-colors font-medium"
+                  >
+                    Sign In
+                  </a>
                 </div>
               </div>
             ) : error ? (
@@ -347,8 +353,14 @@ export const ResetPassword: React.FC<ResetPasswordProps> = ({ oobCode }) => {
           <hr className="my-8 border-gray-300 dark:border-gray-600" />
 
           {/* Section 3: Footer */}
-          <div className="text-center">
-            <p className="text-gray-500 dark:text-gray-400 text-sm text-center">College of Engineering Information Technology</p>
+          <div className="text-center space-y-4">
+            <p className="text-gray-500 dark:text-gray-400 text-sm">College of Engineering Information Technology</p>
+            <a
+              href="/settings"
+              className="inline-block px-4 py-2 text-blue-600 dark:text-blue-400 hover:text-blue-700 dark:hover:text-blue-300 text-sm font-medium transition-colors"
+            >
+              Change Password
+            </a>
           </div>
         </div>
       </div>
