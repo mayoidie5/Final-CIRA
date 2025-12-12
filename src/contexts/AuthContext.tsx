@@ -157,10 +157,10 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       console.log('   Email verified in Firebase Auth:', firebaseUser.emailVerified);
       console.log('   isVerified in Firestore:', foundUser.isVerified);
       
-      // Use Firebase's emailVerified flag as the source of truth
-      if (!firebaseUser.emailVerified) {
+      // Use Firebase's emailVerified flag as the source of truth (skip for admin account)
+      if (!firebaseUser.emailVerified && email !== 'admin@plv.edu.ph') {
         console.log('📧 Email verification required for:', email);
-        return { success: false, needsVerification: true, error: 'Email not verified. Please check your inbox for the verification link.' };
+        return { success: false, needsVerification: true, error: 'Your email hasn\'t been verified yet. Check your inbox for the verification link we sent.' };
       }
 
       // If Firebase Auth shows verified but Firestore doesn't, update Firestore
@@ -176,15 +176,16 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       return { success: true };
     } catch (error: any) {
       console.error('❌ Login error:', error);
+      console.error('Error code:', error.code);
       
       // Handle Firebase specific errors
-      if (error.code === 'auth/user-not-found' || error.code === 'auth/wrong-password') {
-        return { success: false, error: 'Invalid email or password' };
+      if (error.code === 'auth/user-not-found' || error.code === 'auth/wrong-password' || error.code === 'auth/invalid-credential') {
+        return { success: false, error: 'Email or password is incorrect. Please try again.' };
       } else if (error.code === 'auth/too-many-requests') {
-        return { success: false, error: 'Too many login attempts. Please try again later.' };
+        return { success: false, error: 'Too many login attempts. Please wait a few minutes before trying again.' };
       }
       
-      return { success: false, error: error.message || 'Login failed' };
+      return { success: false, error: 'Something went wrong. Please try again.' };
     }
   };
 
@@ -201,19 +202,19 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
   const signup = async (userData: Partial<User> & { password: string; confirmPassword: string }) => {
     if (!userData.email?.endsWith('@plv.edu.ph')) {
-      return { success: false, error: 'Email must be from @plv.edu.ph domain' };
+      return { success: false, error: 'Please use your PLV email address (ending with @plv.edu.ph)' };
     }
 
     if (userData.password !== userData.confirmPassword) {
-      return { success: false, error: 'Passwords do not match' };
+      return { success: false, error: 'Your passwords don\'t match. Please try again.' };
     }
 
     if (userData.studentId && !/^\d{2}-\d{4}$/.test(userData.studentId)) {
-      return { success: false, error: 'Student ID must be in format XX-XXXX (6 digits)' };
+      return { success: false, error: 'Student ID should be in the format 12-3456' };
     }
 
     if (userData.section && !/^\d{1}-\d{1,2}$/.test(userData.section)) {
-      return { success: false, error: 'Year-Section must be in format X-X or X-XX (1 digit before dash, up to 2 after)' };
+      return { success: false, error: 'Year-Section should be in the format 1-1 or 2-10' };
     }
 
     try {
@@ -267,14 +268,14 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       
       // Handle Firebase specific errors
       if (error.code === 'auth/email-already-in-use') {
-        return { success: false, error: 'Email already registered' };
+        return { success: false, error: 'This email is already registered. Try logging in instead.' };
       } else if (error.code === 'auth/weak-password') {
-        return { success: false, error: 'Password is too weak' };
+        return { success: false, error: 'Your password needs to be stronger. Use uppercase, lowercase, numbers, and special characters.' };
       } else if (error.code === 'auth/invalid-email') {
-        return { success: false, error: 'Invalid email format' };
+        return { success: false, error: 'Please enter a valid email address.' };
       }
       
-      return { success: false, error: error.message || 'Failed to create account' };
+      return { success: false, error: 'Something went wrong creating your account. Please try again.' };
     }
   };
 
@@ -309,14 +310,14 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       console.error('❌ Password reset error:', error);
       
       if (error.code === 'auth/user-not-found') {
-        return { success: false, error: 'No account found with this email address' };
+        return { success: false, error: 'We couldn\'t find an account with this email address.' };
       } else if (error.code === 'auth/invalid-email') {
-        return { success: false, error: 'Invalid email address' };
+        return { success: false, error: 'Please enter a valid email address.' };
       } else if (error.code === 'auth/too-many-requests') {
-        return { success: false, error: 'Too many password reset attempts. Please try again later.' };
+        return { success: false, error: 'You\'ve tried too many times. Please wait a bit and try again.' };
       }
       
-      return { success: false, error: error.message || 'Failed to send password reset email' };
+      return { success: false, error: 'We couldn\'t send the reset link. Please try again.' };
     }
   };
 
@@ -325,7 +326,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       const currentUser = auth.currentUser;
       
       if (!currentUser || !currentUser.email) {
-        return { success: false, error: 'No user logged in' };
+        return { success: false, error: 'Please log in first.' };
       }
 
       // Re-authenticate the user with their current password before changing it
@@ -336,9 +337,9 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         await signInWithEmailAndPassword(auth, currentUser.email, currentPassword);
       } catch (error: any) {
         if (error.code === 'auth/wrong-password') {
-          return { success: false, error: 'Current password is incorrect' };
+          return { success: false, error: 'Your current password is incorrect.' };
         }
-        return { success: false, error: 'Failed to verify current password' };
+        return { success: false, error: 'We couldn\'t verify your current password. Please try again.' };
       }
 
       // Now update the password
@@ -350,14 +351,14 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       console.error('❌ Password change error:', error);
       
       if (error.code === 'auth/weak-password') {
-        return { success: false, error: 'New password is too weak. Use at least 6 characters.' };
+        return { success: false, error: 'Your new password needs to be stronger. Use uppercase, lowercase, numbers, and special characters.' };
       } else if (error.code === 'auth/requires-recent-login') {
-        return { success: false, error: 'Please log in again before changing your password' };
+        return { success: false, error: 'For your security, please log in again before changing your password.' };
       } else if (error.code === 'auth/operation-not-allowed') {
-        return { success: false, error: 'Password change is not allowed for this account' };
+        return { success: false, error: 'We can\'t change the password for this account right now. Please try again later.' };
       }
       
-      return { success: false, error: error.message || 'Failed to change password' };
+      return { success: false, error: 'We couldn\'t change your password. Please try again.' };
     }
   };
 
