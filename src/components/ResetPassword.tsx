@@ -254,7 +254,11 @@ export const ResetPassword: React.FC<ResetPasswordProps> = ({ oobCode }) => {
                         type={showConfirmPassword ? 'text' : 'password'}
                         value={confirmPassword}
                         onChange={(e) => setConfirmPassword(e.target.value)}
-                        className="w-full px-4 py-3 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent dark:bg-gray-700 dark:text-white text-sm transition-all"
+                        className={`w-full px-4 py-3 border rounded-lg focus:ring-2 focus:border-transparent dark:bg-gray-700 dark:text-white text-sm transition-all ${
+                          confirmPassword && newPassword !== confirmPassword
+                            ? 'border-red-500 dark:border-red-500 focus:ring-red-500'
+                            : 'border-gray-300 dark:border-gray-600 focus:ring-blue-500'
+                        }`}
                         placeholder="Confirm your new password"
                         required
                       />
@@ -266,6 +270,9 @@ export const ResetPassword: React.FC<ResetPasswordProps> = ({ oobCode }) => {
                         {showConfirmPassword ? <Eye size={18} /> : <EyeOff size={18} />}
                       </button>
                     </div>
+                    {confirmPassword && newPassword !== confirmPassword && (
+                      <p className="text-red-600 dark:text-red-400 text-sm mt-1">❌ Passwords do not match</p>
+                    )}
                   </div>
 
                   {/* Password Requirements */}

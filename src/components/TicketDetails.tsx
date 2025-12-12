@@ -29,6 +29,7 @@ export const TicketDetails: React.FC<TicketDetailsProps> = ({ ticket, onBack, on
   const [successMessage, setSuccessMessage] = useState('');
   const [lightboxImage, setLightboxImage] = useState<number | null>(null);
   const [localTicket, setLocalTicket] = useState<Ticket>(ticket);
+  const [showAllComments, setShowAllComments] = useState(false);
   const [confirmDialog, setConfirmDialog] = useState<{ 
     title: string; 
     message: string; 
@@ -556,10 +557,10 @@ export const TicketDetails: React.FC<TicketDetailsProps> = ({ ticket, onBack, on
             <div>
               <h3 className="text-gray-800 dark:text-white mb-3 flex items-center gap-2">
                 <MessageSquare size={20} />
-                Comments
+                Comments ({localTicket.comments.length})
               </h3>
               <div className="space-y-3">
-                {localTicket.comments.map((comment) => (
+                {(showAllComments ? localTicket.comments : localTicket.comments.slice(-3)).map((comment) => (
                   <div
                     key={comment.id}
                     className="bg-gray-50 dark:bg-gray-900 border border-gray-200 dark:border-gray-700 p-4 rounded-lg"
@@ -577,6 +578,14 @@ export const TicketDetails: React.FC<TicketDetailsProps> = ({ ticket, onBack, on
                   </div>
                 ))}
               </div>
+              {localTicket.comments.length > 3 && (
+                <button
+                  onClick={() => setShowAllComments(!showAllComments)}
+                  className="mt-3 w-full px-4 py-2 bg-gray-200 dark:bg-gray-700 hover:bg-gray-300 dark:hover:bg-gray-600 text-gray-700 dark:text-gray-300 rounded-lg transition-colors"
+                >
+                  {showAllComments ? `Hide Comments (showing ${localTicket.comments.length})` : `View All Comments (${localTicket.comments.length})`}
+                </button>
+              )}
             </div>
           )}
 
