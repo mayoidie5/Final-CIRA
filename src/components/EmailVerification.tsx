@@ -61,9 +61,9 @@ export function EmailVerificationModal({ isOpen, onClose }: EmailVerificationMod
       }
 
       // Get token and email from URL
-      // Try path-based first: /verify/TOKEN/EMAIL
-      const pathname = window.location.pathname;
-      const pathParts = pathname.split('/').filter(p => p);
+      // Check for verification parameters: ?verify=TOKEN&email=EMAIL
+      const urlParams = new URLSearchParams(window.location.search);
+      const hashParams = new URLSearchParams(window.location.hash.slice(1));
       
       let token = null;
       let email = null;
@@ -73,28 +73,29 @@ export function EmailVerificationModal({ isOpen, onClose }: EmailVerificationMod
       console.log('   Pathname:', window.location.pathname);
       console.log('   Search:', window.location.search);
       console.log('   Hash:', window.location.hash);
-      console.log('   Path parts:', pathParts);
-      console.log('   Path parts length:', pathParts.length);
       
-      if (pathParts[0] === 'verify' && pathParts.length >= 3) {
-        token = decodeURIComponent(pathParts[1]);
-        email = decodeURIComponent(pathParts[2]);
-        console.log('📧 Verification link parsed from path');
-        console.log('   Token from path:', token);
-        console.log('   Email from path:', email);
+      // Check query/hash params first (primary method for Vercel)
+      token = urlParams.get('verify') || hashParams.get('verify');
+      email = urlParams.get('email') || hashParams.get('email');
+      
+      if (email) email = decodeURIComponent(email);
+      if (token) token = decodeURIComponent(token);
+      
+      if (token && email) {
+        console.log('📧 Verification link parsed from query params');
+        console.log('   Token from verify param:', token);
+        console.log('   Email from email param:', email);
       } else {
-        // Fallback to query/hash params
-        const urlParams = new URLSearchParams(window.location.search);
-        const hashParams = new URLSearchParams(window.location.hash.slice(1));
+        // Fallback: try path-based verification for backwards compatibility
+        const pathname = window.location.pathname;
+        const pathParts = pathname.split('/').filter(p => p);
         
-        token = urlParams.get('token') || hashParams.get('token');
-        email = urlParams.get('email') || hashParams.get('email');
-        
-        if (email) email = decodeURIComponent(email);
-        if (token) token = decodeURIComponent(token);
-        
-        if (token || email) {
-          console.log('📧 Verification link parsed from query/hash params');
+        if (pathParts[0] === 'verify' && pathParts.length >= 3) {
+          token = decodeURIComponent(pathParts[1]);
+          email = decodeURIComponent(pathParts[2]);
+          console.log('📧 Verification link parsed from path (legacy)');
+          console.log('   Token from path:', token);
+          console.log('   Email from path:', email);
         }
       }
 

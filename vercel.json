@@ -1,14 +1,6 @@
 {
   "rewrites": [
     {
-      "source": "/verify",
-      "destination": "/"
-    },
-    {
-      "source": "/verify/:path*",
-      "destination": "/"
-    },
-    {
       "source": "/(.*)",
       "destination": "/"
     }

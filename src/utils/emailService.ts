@@ -67,9 +67,13 @@ export const sendVerificationEmail = async (email: string) => {
       throw firestoreError;
     }
     
-    // Build verification link using path-based URL (most reliable for email clients)
-    // Format: /verify/token/email - this survives email client link rewriting better than query params or hashes
-    const verificationLink = `http://${hostname}:${port}/verify/${encodeURIComponent(verificationToken)}/${encodeURIComponent(email.toLowerCase())}`;
+    // Build verification link
+    // For Vercel deployment, use query parameters which work reliably
+    // Format: /verify?token=TOKEN&email=EMAIL
+    // Use https:// for production, http:// for localhost development
+    const protocol = hostname === 'localhost' ? 'http' : 'https';
+    const baseUrl = `${protocol}://${hostname}${port !== '80' && port !== '443' ? ':' + port : ''}`;
+    const verificationLink = `${baseUrl}/?verify=${encodeURIComponent(verificationToken)}&email=${encodeURIComponent(email.toLowerCase())}`;
 
     // Template parameters
     const templateParams = {
