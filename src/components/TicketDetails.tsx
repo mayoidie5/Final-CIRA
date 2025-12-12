@@ -317,19 +317,28 @@ export const TicketDetails: React.FC<TicketDetailsProps> = ({ ticket, onBack, on
       const updatedComments = [...(ticket.comments || []), newComment];
       await updateTicket(ticket.id, { comments: updatedComments });
       
-      // Notify relevant users about the comment
+      // Notify relevant users about the comment (excluding the sender)
+      console.log('💬 Comment added by:', user?.id, 'Role:', user?.role);
       if (user?.role === 'student') {
         // Student commenting: notify class reps and admin
-        await notifyClassReps(`💬 New comment on Ticket #${ticket.id.slice(0, 8)} from ${user.firstName} ${user.lastName}`, ticket.id);
-        await notifyAdmin(`💬 New comment on Ticket #${ticket.id.slice(0, 8)} from ${user.firstName} ${user.lastName}`, ticket.id);
+        console.log('  → Notifying class reps and admin (excluding student)');
+        await notifyClassReps(`💬 New comment on Ticket #${ticket.id.slice(0, 8)} from ${user.firstName} ${user.lastName}`, ticket.id, user.id);
+        await notifyAdmin(`💬 New comment on Ticket #${ticket.id.slice(0, 8)} from ${user.firstName} ${user.lastName}`, ticket.id, user.id);
       } else if (user?.role === 'class_rep') {
-        // Class rep commenting: notify admin
-        await notifyAdmin(`💬 New comment on Ticket #${ticket.id.slice(0, 8)} from ${user.firstName} ${user.lastName}`, ticket.id);
+        // Class rep commenting: notify admin (excluding themselves)
+        console.log('  → Notifying admin (excluding class rep)');
+        await notifyAdmin(`💬 New comment on Ticket #${ticket.id.slice(0, 8)} from ${user.firstName} ${user.lastName}`, ticket.id, user.id);
+      } else if (user?.role === 'admin') {
+        // Admin commenting: don't send any notifications
+        console.log('  → Admin commented, no notifications sent');
       }
       
       setCommentText('');
       setSuccessMessage('Comment added successfully!');
       console.log('✅ Comment added successfully');
+      
+      // Update ticket in real-time
+      await refetchTicket();
     } catch (err) {
       const errorMessage = err instanceof Error ? err.message : 'Failed to add comment';
       console.error('❌ Error adding comment:', errorMessage);

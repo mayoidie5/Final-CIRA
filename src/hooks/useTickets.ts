@@ -197,9 +197,9 @@ export const useTickets = () => {
     }
   };
 
-  const notifyClassReps = async (message: string, ticketId: string) => {
+  const notifyClassReps = async (message: string, ticketId: string, excludeUserId?: string) => {
     try {
-      console.log('📢 Notifying class reps:', message);
+      console.log('📢 Notifying class reps:', message, 'Excluding:', excludeUserId);
       // Query Firestore to find all class reps
       const usersRef = collection(db, 'users');
       const classRepQuery = query(usersRef, where('role', '==', 'class_rep'));
@@ -210,22 +210,31 @@ export const useTickets = () => {
         return;
       }
 
-      // Notify all class reps
-      const notificationPromises = classRepSnapshot.docs.map(doc => {
+      // Notify all class reps except the one who sent the message
+      const filteredDocs = classRepSnapshot.docs.filter(doc => {
+        const docId = doc.id;
+        const shouldNotify = docId !== excludeUserId;
+        console.log(`  - Class rep ID: "${docId}" | Exclude ID: "${excludeUserId}" | Match: ${docId === excludeUserId} | Notify: ${shouldNotify}`);
+        return shouldNotify;
+      });
+      
+      console.log(`  → Notifying ${filteredDocs.length} out of ${classRepSnapshot.docs.length} class rep(s)`);
+      
+      const notificationPromises = filteredDocs.map(doc => {
         const classRepId = doc.id;
         return addNotification(classRepId, ticketId, message, `/tickets/${ticketId}`);
       });
       
       await Promise.all(notificationPromises);
-      console.log('✅ Notification sent to', classRepSnapshot.docs.length, 'class rep(s)');
+      console.log('✅ Notification sent to', notificationPromises.length, 'class rep(s)');
     } catch (err) {
       console.error('❌ Error notifying class reps:', err);
     }
   };
 
-  const notifyAdmin = async (message: string, ticketId: string) => {
+  const notifyAdmin = async (message: string, ticketId: string, excludeUserId?: string) => {
     try {
-      console.log('📢 Notifying admin:', message);
+      console.log('📢 Notifying admin:', message, 'Excluding:', excludeUserId);
       // Query Firestore to find the admin user(s)
       const usersRef = collection(db, 'users');
       const adminQuery = query(usersRef, where('role', '==', 'admin'));
@@ -236,14 +245,23 @@ export const useTickets = () => {
         return;
       }
 
-      // Notify all admins
-      const notificationPromises = adminSnapshot.docs.map(doc => {
+      // Notify all admins except the one who sent the message
+      const filteredDocs = adminSnapshot.docs.filter(doc => {
+        const docId = doc.id;
+        const shouldNotify = docId !== excludeUserId;
+        console.log(`  - Admin ID: "${docId}" | Exclude ID: "${excludeUserId}" | Match: ${docId === excludeUserId} | Notify: ${shouldNotify}`);
+        return shouldNotify;
+      });
+      
+      console.log(`  → Notifying ${filteredDocs.length} out of ${adminSnapshot.docs.length} admin(s)`);
+      
+      const notificationPromises = filteredDocs.map(doc => {
         const adminId = doc.id;
         return addNotification(adminId, ticketId, message, `/tickets/${ticketId}`);
       });
       
       await Promise.all(notificationPromises);
-      console.log('✅ Notification sent to', adminSnapshot.docs.length, 'admin(s)');
+      console.log('✅ Notification sent to', notificationPromises.length, 'admin(s)');
     } catch (err) {
       console.error('❌ Error notifying admin:', err);
     }

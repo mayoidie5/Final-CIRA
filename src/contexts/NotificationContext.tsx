@@ -38,10 +38,10 @@ export const NotificationProvider: React.FC<{ children: React.ReactNode }> = ({ 
   ) => {
     try {
       console.log('🔔 Creating notification for userId:', userId, 'Message:', message);
-      await firebaseAddNotification(userId, ticketId, message, targetPage);
-      // Refetch notifications for the TARGET user only
-      console.log('🔄 Refetching notifications for:', userId);
-      await fetchNotifications(userId);
+      const notifId = await firebaseAddNotification(userId, ticketId, message, targetPage);
+      console.log('✅ Notification created with ID:', notifId);
+      // Don't refetch here - let the client refetch when they actively view notifications
+      // This prevents duplicate notifications from being fetched when multiple people are notified
     } catch (error) {
       console.error('❌ Error adding notification:', error);
       throw error;
