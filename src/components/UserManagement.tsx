@@ -83,14 +83,16 @@ export const UserManagement: React.FC = () => {
       if (data.deletionType === 'instant') {
         await userService.deleteUserInstant(showDeleteDialog.userId);
         setSuccessMessage(`User ${showDeleteDialog.userName} has been permanently deleted.`);
-      } else {
+      } else if (data.deletionType === '3-day warning') {
         await userService.scheduleUserDeletion(showDeleteDialog.userId, data.reason || 'No reason provided');
         setSuccessMessage(`User ${showDeleteDialog.userName} has been scheduled for deletion in 3 days.`);
+      } else {
+        throw new Error('Invalid deletion type selected');
       }
       await loadUsers();
     } catch (err) {
       console.error('Failed to delete user:', err);
-      setError('Failed to delete user');
+      setError(err instanceof Error ? err.message : 'Failed to delete user');
     } finally {
       setShowDeleteDialog(null);
     }
@@ -686,6 +688,7 @@ export const UserManagement: React.FC = () => {
           onSubmit={handleDeleteUser}
           onCancel={() => setShowDeleteDialog(null)}
           submitLabel="Delete User"
+          initialData={{ deletionType: '3-day warning', reason: '' }}
         />
       )}
         </>
