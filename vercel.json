@@ -1,14 +1,6 @@
 {
   "rewrites": [
     {
-      "source": "/verify/:token/:email",
-      "destination": "/"
-    },
-    {
-      "source": "/verify/:path*",
-      "destination": "/"
-    },
-    {
       "source": "/(.*)",
       "destination": "/"
     }

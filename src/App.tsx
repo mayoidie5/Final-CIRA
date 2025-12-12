@@ -46,31 +46,31 @@ const AppContent: React.FC = () => {
     }
 
     // Check if user arrived from email verification link
+    const urlParams = new URLSearchParams(window.location.search);
+    const hashParams = new URLSearchParams(window.location.hash.slice(1));
+    
+    // Check for verification parameters in query string or hash
+    let token = urlParams.get('verify') || hashParams.get('verify');
+    let email = urlParams.get('email') || hashParams.get('email');
+    
+    console.log('🔍 Checking for verification parameters:');
+    console.log('   Token (verify param):', token);
+    console.log('   Email param:', email);
+    
+    // Fallback: try path-based verification for backwards compatibility
     const pathname = window.location.pathname;
-    const pathParts = pathname.split('/').filter(p => p); // Split and remove empty parts
+    const pathParts = pathname.split('/').filter(p => p);
     
-    console.log('🔍 Path parts:', pathParts);
-    
-    // Try to extract token and email from path: /verify/TOKEN/EMAIL
-    let token = null;
-    let email = null;
-    
-    if (pathParts[0] === 'verify' && pathParts.length >= 3) {
+    if (!token && !email && pathParts[0] === 'verify' && pathParts.length >= 3) {
       token = decodeURIComponent(pathParts[1]);
       email = decodeURIComponent(pathParts[2]);
-      console.log('✅ Verification link detected from path');
+      console.log('✅ Verification link detected from path (legacy)');
       console.log('   Token:', token);
       console.log('   Email:', email);
-    } else {
-      // Fallback: try query params or hash
-      const urlParams = new URLSearchParams(window.location.search);
-      const hashParams = new URLSearchParams(window.location.hash.slice(1));
-      token = urlParams.get('token') || hashParams.get('token');
-      email = urlParams.get('email') || hashParams.get('email');
-      
-      if (token && email) {
-        console.log('✅ Verification link detected from query/hash params');
-      }
+    } else if (token && email) {
+      console.log('✅ Verification link detected from query params');
+      console.log('   Token:', token);
+      console.log('   Email:', email);
     }
     
     if (token && email) {
@@ -81,27 +81,6 @@ const AppContent: React.FC = () => {
     }
     
     console.log('⚠️ No token/email found in URL');
-    
-    // Check for /verify path and redirect from localhost if needed
-    if (pathname.includes('/verify')) {
-      console.log('✅ /verify path detected');
-      const isLocalhost = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1';
-      
-      if (isLocalhost) {
-        // If on localhost, redirect to network IP
-        const networkIP = localStorage.getItem('networkIP');
-        const networkPort = localStorage.getItem('networkPort') || '3000';
-        
-        if (networkIP && networkIP !== 'localhost' && networkIP !== '127.0.0.1') {
-          const newUrl = `http://${networkIP}:${networkPort}${pathname}${window.location.search}${window.location.hash}`;
-          console.log('🔄 Redirecting verification to network IP:', newUrl);
-          window.location.href = newUrl;
-          return;
-        }
-      }
-      
-      setShowEmailVerificationModal(true);
-    }
   }, []);
 
   if (!user) {
