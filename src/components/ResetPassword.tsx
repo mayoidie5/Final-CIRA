@@ -270,48 +270,23 @@ export const ResetPassword: React.FC<ResetPasswordProps> = ({ oobCode }) => {
 
                   {/* Password Requirements */}
                   {newPassword && !allRequirementsMet && (
-                    <div className="bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-800 rounded-lg p-4">
-                      <p className="text-amber-900 dark:text-amber-300 font-medium text-sm mb-3">Password Requirements:</p>
-                      <ul className="space-y-2">
-                        <li className="flex items-center gap-2 text-sm">
-                          <span className={passwordRequirements.minLength ? 'text-green-600 dark:text-green-400' : 'text-gray-400'}>
-                            {passwordRequirements.minLength ? '✓' : '○'}
-                          </span>
-                          <span className={passwordRequirements.minLength ? 'text-green-700 dark:text-green-400' : 'text-gray-600 dark:text-gray-400'}>
-                            At least 8 characters
-                          </span>
+                    <div className="bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-lg p-3">
+                      <p className="text-red-800 dark:text-red-300 mb-2">Password Requirements:</p>
+                      <ul className="space-y-1 text-sm">
+                        <li className={passwordRequirements.minLength ? 'text-green-600 dark:text-green-400' : 'text-red-600 dark:text-red-400'}>
+                          {passwordRequirements.minLength ? '✓' : '✗'} At least 8 characters
                         </li>
-                        <li className="flex items-center gap-2 text-sm">
-                          <span className={passwordRequirements.hasUpperCase ? 'text-green-600 dark:text-green-400' : 'text-gray-400'}>
-                            {passwordRequirements.hasUpperCase ? '✓' : '○'}
-                          </span>
-                          <span className={passwordRequirements.hasUpperCase ? 'text-green-700 dark:text-green-400' : 'text-gray-600 dark:text-gray-400'}>
-                            One uppercase letter
-                          </span>
+                        <li className={passwordRequirements.hasUpperCase ? 'text-green-600 dark:text-green-400' : 'text-red-600 dark:text-red-400'}>
+                          {passwordRequirements.hasUpperCase ? '✓' : '✗'} One uppercase letter
                         </li>
-                        <li className="flex items-center gap-2 text-sm">
-                          <span className={passwordRequirements.hasLowerCase ? 'text-green-600 dark:text-green-400' : 'text-gray-400'}>
-                            {passwordRequirements.hasLowerCase ? '✓' : '○'}
-                          </span>
-                          <span className={passwordRequirements.hasLowerCase ? 'text-green-700 dark:text-green-400' : 'text-gray-600 dark:text-gray-400'}>
-                            One lowercase letter
-                          </span>
+                        <li className={passwordRequirements.hasLowerCase ? 'text-green-600 dark:text-green-400' : 'text-red-600 dark:text-red-400'}>
+                          {passwordRequirements.hasLowerCase ? '✓' : '✗'} One lowercase letter
                         </li>
-                        <li className="flex items-center gap-2 text-sm">
-                          <span className={passwordRequirements.hasNumber ? 'text-green-600 dark:text-green-400' : 'text-gray-400'}>
-                            {passwordRequirements.hasNumber ? '✓' : '○'}
-                          </span>
-                          <span className={passwordRequirements.hasNumber ? 'text-green-700 dark:text-green-400' : 'text-gray-600 dark:text-gray-400'}>
-                            One number
-                          </span>
+                        <li className={passwordRequirements.hasNumber ? 'text-green-600 dark:text-green-400' : 'text-red-600 dark:text-red-400'}>
+                          {passwordRequirements.hasNumber ? '✓' : '✗'} One number
                         </li>
-                        <li className="flex items-center gap-2 text-sm">
-                          <span className={passwordRequirements.hasSpecial ? 'text-green-600 dark:text-green-400' : 'text-gray-400'}>
-                            {passwordRequirements.hasSpecial ? '✓' : '○'}
-                          </span>
-                          <span className={passwordRequirements.hasSpecial ? 'text-green-700 dark:text-green-400' : 'text-gray-600 dark:text-gray-400'}>
-                            One special character
-                          </span>
+                        <li className={passwordRequirements.hasSpecial ? 'text-green-600 dark:text-green-400' : 'text-red-600 dark:text-red-400'}>
+                          {passwordRequirements.hasSpecial ? '✓' : '✗'} One special character
                         </li>
                       </ul>
                     </div>
