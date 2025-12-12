@@ -76,13 +76,39 @@ export const useTickets = () => {
       // Reload tickets to reflect changes
       await loadTickets();
 
-      // Add notification to the user
+      // Add notification to the user who submitted
       await addNotification(
         user.id,
         newTicketId,
         `✅ Your ticket has been submitted successfully`,
         `/tickets/${newTicketId}`
       );
+
+      // Notify class reps about new student submission
+      if (user.role === 'student') {
+        try {
+          const classRepsSnapshot = await getDocs(
+            query(
+              collection(db, 'users'),
+              where('role', '==', 'class_rep')
+            )
+          );
+
+          for (const classRepDoc of classRepsSnapshot.docs) {
+            const classRep = classRepDoc.data();
+            await addNotification(
+              classRepDoc.id,
+              newTicketId,
+              `📋 New ticket submitted: ${ticketData.issueType} - ${user.firstName} ${user.lastName}`,
+              `/tickets/${newTicketId}`
+            );
+          }
+          console.log('✅ Notified class reps about new ticket');
+        } catch (notifError) {
+          console.warn('⚠️ Failed to notify class reps:', notifError);
+          // Don't fail the ticket creation if notification fails
+        }
+      }
 
       console.log('✅ Ticket created with ID:', newTicketId);
       return newTicketId;
@@ -174,9 +200,24 @@ export const useTickets = () => {
   const notifyClassReps = async (message: string, ticketId: string) => {
     try {
       console.log('📢 Notifying class reps:', message);
-      // In a real implementation, query all class reps from Firestore
-      // For now, we'll just log
-      await addNotification('admin', ticketId, message);
+      // Query Firestore to find all class reps
+      const usersRef = collection(db, 'users');
+      const classRepQuery = query(usersRef, where('role', '==', 'class_rep'));
+      const classRepSnapshot = await getDocs(classRepQuery);
+      
+      if (classRepSnapshot.empty) {
+        console.warn('⚠️ No class reps found');
+        return;
+      }
+
+      // Notify all class reps
+      const notificationPromises = classRepSnapshot.docs.map(doc => {
+        const classRepId = doc.id;
+        return addNotification(classRepId, ticketId, message, `/tickets/${ticketId}`);
+      });
+      
+      await Promise.all(notificationPromises);
+      console.log('✅ Notification sent to', classRepSnapshot.docs.length, 'class rep(s)');
     } catch (err) {
       console.error('❌ Error notifying class reps:', err);
     }

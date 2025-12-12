@@ -140,18 +140,8 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       // Normalize email to lowercase for consistency
       const normalizedEmail = userData.email!.toLowerCase();
       
-      // CHECK: Does a user with this email already exist in Firestore?
-      const existingUsersSnapshot = await getDocs(collection(db, 'users'));
-      const emailExists = existingUsersSnapshot.docs.some(doc => {
-        const docData = doc.data();
-        return docData.email && docData.email.toLowerCase() === normalizedEmail;
-      });
-      
-      if (emailExists) {
-        return { success: false, error: 'Email already registered. Please sign in instead.' };
-      }
-      
-      // Create user in Firebase Authentication
+      // Create user in Firebase Authentication first
+      // This will fail if email is already in use, which handles the duplicate email case
       const userCredential = await createUserWithEmailAndPassword(auth, normalizedEmail, userData.password!);
       const firebaseUser = userCredential.user;
 

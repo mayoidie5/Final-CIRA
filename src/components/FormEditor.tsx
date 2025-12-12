@@ -326,16 +326,16 @@ export const FormEditor: React.FC = () => {
         <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2 sm:gap-3 w-full sm:w-auto">
           <button
             onClick={() => setShowPreview(!showPreview)}
-            className="flex items-center justify-center gap-2 bg-purple-600 hover:bg-purple-700 text-white px-4 sm:px-6 py-2.5 rounded-lg transition-colors text-sm sm:text-base"
+            className="flex items-center justify-center gap-2 bg-purple-600 hover:bg-purple-700 text-white px-4 sm:px-6 py-3 rounded-lg transition-colors text-sm sm:text-base"
           >
-            {showPreview ? <EyeOff size={18} /> : <Eye size={18} />}
+            {showPreview ? <EyeOff size={20} /> : <Eye size={20} />}
             <span className="hidden sm:inline">{showPreview ? 'Hide Preview' : 'Show Preview'}</span>
             <span className="sm:hidden">{showPreview ? 'Hide' : 'Show'}</span>
           </button>
           {!editMode ? (
             <button
               onClick={() => setEditMode(true)}
-              className="flex items-center justify-center gap-2 bg-blue-600 hover:bg-blue-700 text-white px-6 py-2 rounded-lg transition-colors"
+              className="flex items-center justify-center gap-2 bg-blue-600 hover:bg-blue-700 text-white px-6 py-3 rounded-lg transition-colors text-sm sm:text-base"
             >
               <Edit2 size={20} />
               Edit Form
@@ -739,7 +739,7 @@ export const FormEditor: React.FC = () => {
             </button>
           </div>
 
-          <div className="p-4 sm:p-6 space-y-6">
+          <div className="p-4 sm:p-6 space-y-4 sm:space-y-6">
             {/* Campus Selection */}
             <div>
               <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">

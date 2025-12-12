@@ -25,7 +25,10 @@ const AppContent: React.FC = () => {
   const [selectedTicketId, setSelectedTicketId] = useState<string | null>(null);
   const [showSettings, setShowSettings] = useState(false);
   const [showTutorial, setShowTutorial] = useState(false);
-  const [sidebarOpen, setSidebarOpen] = useState(true);
+  const [sidebarOpen, setSidebarOpen] = useState(() => {
+    // Sidebar closed by default on mobile (< 1024px), open on desktop
+    return typeof window !== 'undefined' ? window.innerWidth >= 1024 : true;
+  });
   const [showEmailVerificationModal, setShowEmailVerificationModal] = useState(false);
 
   // Save current page to localStorage whenever it changes
@@ -39,15 +42,27 @@ const AppContent: React.FC = () => {
       console.log('📨 Received message:', event.data);
       if (event.data.type === 'emailVerificationSuccess') {
         console.log('✅ Email verification successful from other tab:', event.data.email);
-        // Show a brief notification to the user that email was verified
-        const message = `Email verified for ${event.data.email}. You can now sign in.`;
-        console.log('📢 Showing notification:', message);
-        // Optionally show a toast notification here
       }
     };
 
     window.addEventListener('message', handleMessage);
     return () => window.removeEventListener('message', handleMessage);
+  }, []);
+
+  // Handle window resize to manage sidebar visibility
+  useEffect(() => {
+    const handleResize = () => {
+      if (window.innerWidth >= 1024) {
+        // Desktop: keep sidebar open
+        setSidebarOpen(true);
+      } else {
+        // Mobile: close sidebar
+        setSidebarOpen(false);
+      }
+    };
+
+    window.addEventListener('resize', handleResize);
+    return () => window.removeEventListener('resize', handleResize);
   }, []);
 
   // Initialize localStorage with required data on first load
@@ -167,7 +182,7 @@ const AppContent: React.FC = () => {
         { id: 'form-editor', label: 'Form Editor', icon: Edit },
         { id: 'archive', label: 'Archive', icon: ArchiveIcon },
       ];
-    } else if (user.role === 'class_rep') {
+    } else if (user.role === 'class_rep' && !user.isPending) {
       return [
         { id: 'dashboard', label: 'Dashboard', icon: LayoutDashboard },
         { id: 'report', label: 'Report Issue', icon: Plus },
@@ -230,7 +245,7 @@ const AppContent: React.FC = () => {
         {/* Sidebar Overlay for Mobile */}
         {sidebarOpen && (
           <div 
-            className="lg:hidden fixed inset-0 bg-black bg-opacity-50 z-30 top-16"
+            className="lg:hidden fixed inset-0 bg-black/50 z-30 top-16"
             onClick={() => setSidebarOpen(false)}
           />
         )}
@@ -286,10 +301,6 @@ const AppContent: React.FC = () => {
 
       {showSettings && <Settings onClose={() => setShowSettings(false)} />}
       {showTutorial && <Tutorial onClose={() => setShowTutorial(false)} />}
-      <EmailVerificationModal 
-        isOpen={showEmailVerificationModal} 
-        onClose={() => setShowEmailVerificationModal(false)} 
-      />
     </div>
   );
 };
