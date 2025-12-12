@@ -19,6 +19,7 @@ export const ResetPassword: React.FC<ResetPasswordProps> = ({ oobCode }) => {
   const [success, setSuccess] = useState(false);
   const [loading, setLoading] = useState(false);
   const [verifying, setVerifying] = useState(true);
+  const [codeType, setCodeType] = useState<'password' | 'email' | null>(null);
 
   const isDark = theme === 'dark';
 
@@ -34,7 +35,7 @@ export const ResetPassword: React.FC<ResetPasswordProps> = ({ oobCode }) => {
   const allRequirementsMet = Object.values(passwordRequirements).every(req => req);
   const passwordsMatch = newPassword === confirmPassword && newPassword.length > 0;
 
-  // Verify the reset code on mount
+  // Verify the code on mount - detect if it's password reset or email verification
   useEffect(() => {
     const verifyCode = async () => {
       if (!oobCode) {
@@ -44,14 +45,37 @@ export const ResetPassword: React.FC<ResetPasswordProps> = ({ oobCode }) => {
       }
 
       try {
-        // Verify the code and get the email
-        const resetEmail = await verifyPasswordResetCode(auth, oobCode);
-        setEmail(resetEmail);
-        setVerifying(false);
-        console.log('✅ Password reset code verified for:', resetEmail);
+        // Try password reset first
+        try {
+          const resetEmail = await verifyPasswordResetCode(auth, oobCode);
+          setEmail(resetEmail);
+          setCodeType('password');
+          setVerifying(false);
+          console.log('✅ Password reset code verified for:', resetEmail);
+          return;
+        } catch (resetErr: any) {
+          // Password reset verification failed, try email verification
+          console.log('ℹ️ Not a password reset code, attempting email verification...');
+        }
+
+        // Try email verification using applyActionCode
+        try {
+          // For email verification, we use the context to handle it
+          // But we can detect it's an email verification code here
+          const { applyActionCode } = await import('firebase/auth');
+          await applyActionCode(auth, oobCode);
+          setCodeType('email');
+          setSuccess(true);
+          setVerifying(false);
+          console.log('✅ Email verification code applied successfully');
+          return;
+        } catch (emailErr: any) {
+          console.error('❌ Email verification error:', emailErr);
+          throw emailErr;
+        }
       } catch (err: any) {
         console.error('❌ Code verification error:', err);
-        setError('This reset link is invalid or has expired. Please request a new one.');
+        setError('This link is invalid or has expired. Please request a new one.');
         setVerifying(false);
       }
     };
@@ -147,12 +171,16 @@ export const ResetPassword: React.FC<ResetPasswordProps> = ({ oobCode }) => {
           {/* Title with Icon */}
           <div className="flex items-center justify-center gap-3 mb-2">
             <Lock size={32} className="text-blue-600 dark:text-blue-400" />
-            <h1 className="text-3xl font-bold text-gray-900 dark:text-white">Reset Password</h1>
+            <h1 className="text-3xl font-bold text-gray-900 dark:text-white">
+              {codeType === 'email' ? 'Email Verification' : 'Reset Password'}
+            </h1>
           </div>
           
           {/* Subtitle */}
           <p className="text-gray-600 dark:text-gray-400 text-sm">
-            Create a strong new password to secure your account
+            {codeType === 'email' 
+              ? 'Your email has been verified' 
+              : 'Create a strong new password to secure your account'}
           </p>
           </div>
 
@@ -169,9 +197,13 @@ export const ResetPassword: React.FC<ResetPasswordProps> = ({ oobCode }) => {
                   </div>
                 </div>
                 <div>
-                  <h2 className="text-2xl font-bold text-gray-900 dark:text-white mb-2">Password Reset!</h2>
+                  <h2 className="text-2xl font-bold text-gray-900 dark:text-white mb-2">
+                    {codeType === 'email' ? 'Email Verified!' : 'Password Reset!'}
+                  </h2>
                   <p className="text-gray-600 dark:text-gray-400 mb-6">
-                    Your password has been successfully reset.
+                    {codeType === 'email' 
+                      ? 'Your email has been successfully verified.' 
+                      : 'Your password has been successfully reset.'}
                   </p>
                   <a
                     href="/signin"
