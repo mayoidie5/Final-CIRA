@@ -120,7 +120,7 @@ export const Dashboard: React.FC<DashboardProps> = ({ onNavigate, onShowPendingD
         <div className="bg-white dark:bg-gray-800 p-4 rounded-lg shadow border border-gray-200 dark:border-gray-700">
           <div className="flex items-start justify-between gap-4">
             <div className="flex-1 min-w-0">
-              <p className="text-sm text-gray-600 dark:text-gray-400 font-medium whitespace-nowrap">Pending Res...</p>
+              <p className="text-sm text-gray-600 dark:text-gray-400 font-medium">Pending Resolution</p>
               <p className="text-3xl font-bold text-gray-800 dark:text-white mt-3">{pendingCount}</p>
             </div>
             <AlertCircle className="text-orange-600 dark:text-orange-400 flex-shrink-0" size={28} />

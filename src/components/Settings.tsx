@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { X, Save, User, Mail, Building2, Shield, Key, AlertCircle, CheckCircle, Eye, EyeOff } from 'lucide-react';
 import { useAuth } from '../contexts/AuthContext';
 import { useTheme } from '../contexts/ThemeContext';
+import { SuccessToast } from './SuccessToast';
 
 interface SettingsProps {
   onClose: () => void;
@@ -28,6 +29,7 @@ export const Settings: React.FC<SettingsProps> = ({ onClose }) => {
   const [showCurrentPassword, setShowCurrentPassword] = useState(false);
   const [showNewPassword, setShowNewPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
+  const [showSuccessToast, setShowSuccessToast] = useState(false);
 
   // Password validation for new password
   const passwordRequirements = {
@@ -43,8 +45,10 @@ export const Settings: React.FC<SettingsProps> = ({ onClose }) => {
 
   const handleSave = () => {
     updateUser(formData);
-    alert('Settings saved successfully!');
-    onClose();
+    setShowSuccessToast(true);
+    setTimeout(() => {
+      onClose();
+    }, 2000);
   };
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
@@ -431,6 +435,13 @@ export const Settings: React.FC<SettingsProps> = ({ onClose }) => {
           </button>
         </div>
       </div>
+
+      {showSuccessToast && (
+        <SuccessToast 
+          message="Settings saved successfully!" 
+          onClose={() => setShowSuccessToast(false)} 
+        />
+      )}
     </div>
   );
 };

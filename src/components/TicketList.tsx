@@ -89,11 +89,14 @@ export const TicketList: React.FC<TicketListProps> = ({ view = 'all', selectedTi
         // Approved class_rep - show tickets created by the class rep
         userTickets = tickets.filter(t => t.userId === user.id && t.status !== 'resolved');
       } else if (view === 'review') {
-        // Approved class_rep - show tickets they have accepted (where acceptedBy is their ID)
+        // Approved class_rep - show submitted tickets for review AND tickets they have accepted
         userTickets = tickets.filter(t => 
           t.userId !== user.id && 
-          t.acceptedBy === user.id && 
-          t.status !== 'resolved'
+          t.status !== 'resolved' &&
+          (
+            (t.status === 'submitted' && !t.acceptedBy) || // Pending for review
+            (t.acceptedBy === user.id) // Already accepted by this class rep
+          )
         );
       }
     } else if (user?.role === 'admin') {

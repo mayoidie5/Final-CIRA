@@ -179,7 +179,30 @@ export const ReportIssue: React.FC<ReportIssueProps> = ({ onSuccess }) => {
   return (
     <div className="max-w-3xl mx-auto p-4 sm:p-6">
       <div className="bg-white dark:bg-gray-800 rounded-lg shadow border border-gray-200 dark:border-gray-700 p-4 sm:p-6">
-        <h2 className="text-gray-800 dark:text-white mb-6">Report an Issue</h2>
+        <div className="flex items-center justify-between mb-6">
+          <h2 className="text-gray-800 dark:text-white">Report an Issue</h2>
+          <button
+            type="button"
+            disabled={isSubmitting}
+            onClick={() => {
+              setFormData({
+                campus: '',
+                building: '',
+                room: '',
+                unitId: '',
+                issueType: '',
+                issueSubtype: '',
+                issueDescription: '',
+                otherIssueSubtype: '',
+              });
+              setImages([]);
+              setValidationError('');
+            }}
+            className="px-4 py-2 bg-gray-200 dark:bg-gray-700 hover:bg-gray-300 dark:hover:bg-gray-600 disabled:bg-gray-400 disabled:cursor-not-allowed text-gray-700 dark:text-gray-300 rounded-lg transition-colors text-sm"
+          >
+            Clear
+          </button>
+        </div>
 
         <form onSubmit={handleSubmit} className="space-y-4 sm:space-y-6">
           <div className="grid grid-cols-1 md:grid-cols-2 gap-3 sm:gap-4 md:gap-5 lg:gap-6">
@@ -374,26 +397,6 @@ export const ReportIssue: React.FC<ReportIssueProps> = ({ onSuccess }) => {
               ) : (
                 'Submit Report'
               )}
-            </button>
-            <button
-              type="button"
-              disabled={isSubmitting}
-              onClick={() => {
-                setFormData({
-                  campus: '',
-                  building: '',
-                  room: '',
-                  unitId: '',
-                  issueType: '',
-                  issueSubtype: '',
-                  issueDescription: '',
-                  otherIssueSubtype: '',
-                });
-                setImages([]);
-              }}
-              className="px-6 bg-gray-200 dark:bg-gray-700 hover:bg-gray-300 dark:hover:bg-gray-600 disabled:bg-gray-400 disabled:cursor-not-allowed text-gray-700 dark:text-gray-300 py-2 rounded-lg transition-colors"
-            >
-              Clear
             </button>
           </div>
         </form>
