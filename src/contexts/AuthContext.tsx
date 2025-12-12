@@ -308,6 +308,8 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       return { success: true };
     } catch (error: any) {
       console.error('❌ Password reset error:', error);
+      console.error('Error code:', error.code);
+      console.error('Error message:', error.message);
       
       if (error.code === 'auth/user-not-found') {
         return { success: false, error: 'We couldn\'t find an account with this email address.' };
