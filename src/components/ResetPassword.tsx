@@ -66,7 +66,7 @@ export const ResetPassword: React.FC<ResetPasswordProps> = ({ oobCode }) => {
       hasUpperCase: /[A-Z]/.test(newPassword),
       hasLowerCase: /[a-z]/.test(newPassword),
       hasNumber: /[0-9]/.test(newPassword),
-      hasSpecial: /[!@#$%^&*()_+\-=\[\]{};':"\\|,.<>\/?]/.test(newPassword),
+      hasSpecial: /[!@#$%^&*(),.?":{}|<>]/.test(newPassword),
     });
   }, [newPassword]);
 
@@ -199,12 +199,6 @@ export const ResetPassword: React.FC<ResetPasswordProps> = ({ oobCode }) => {
               </div>
             ) : (
               <>
-                <div className="mb-6">
-                  <p className="text-gray-600 dark:text-gray-400">
-                    Create a strong password for your account. It must contain at least 8 characters with uppercase, lowercase, numbers, and special characters.
-                  </p>
-                </div>
-
                 <form onSubmit={handleSubmit} className="space-y-5">
                   {/* Email Field */}
                   <div>
@@ -333,7 +327,7 @@ export const ResetPassword: React.FC<ResetPasswordProps> = ({ oobCode }) => {
                   <button
                     type="submit"
                     disabled={loading || !allRequirementsMet || !passwordsMatch}
-                    className="w-full bg-gradient-to-r from-blue-600 to-blue-700 hover:from-blue-700 hover:to-blue-800 disabled:from-gray-400 disabled:to-gray-400 text-white py-3 rounded-lg transition-all font-medium shadow-md hover:shadow-lg disabled:shadow-none disabled:cursor-not-allowed"
+                    className="w-full px-4 py-2.5 bg-blue-600 hover:bg-blue-700 disabled:bg-gray-400 disabled:cursor-not-allowed text-white font-medium rounded-lg transition-colors shadow-sm hover:shadow-md disabled:shadow-none"
                   >
                     {loading ? (
                       <div className="flex items-center justify-center gap-2">
