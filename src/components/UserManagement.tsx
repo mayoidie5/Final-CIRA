@@ -163,37 +163,37 @@ export const UserManagement: React.FC = () => {
       ) : (
         <>
       {/* Statistics Cards */}
-      <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3 sm:gap-4">
+      <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 xl:grid-cols-6 gap-3 sm:gap-4">
         <div className="bg-white dark:bg-gray-800 p-4 rounded-lg border border-gray-200 dark:border-gray-700">
           <div className="flex items-center gap-2 mb-2">
             <Users className="text-blue-600 dark:text-blue-400" size={20} />
-            <span className="text-gray-600 dark:text-gray-400">Total Users</span>
+            <span className="text-gray-600 dark:text-gray-400 text-sm">Total Users</span>
           </div>
-          <p className="text-gray-800 dark:text-white">{stats.total}</p>
+          <p className="text-2xl font-bold text-gray-800 dark:text-white">{stats.total}</p>
         </div>
         
         <div className="bg-white dark:bg-gray-800 p-4 rounded-lg border border-gray-200 dark:border-gray-700">
           <div className="flex items-center gap-2 mb-2">
             <CheckCircle className="text-green-600 dark:text-green-400" size={20} />
-            <span className="text-gray-600 dark:text-gray-400">Verified</span>
+            <span className="text-gray-600 dark:text-gray-400 text-sm">Verified</span>
           </div>
-          <p className="text-gray-800 dark:text-white">{stats.verified}</p>
+          <p className="text-2xl font-bold text-gray-800 dark:text-white">{stats.verified}</p>
         </div>
         
         <div className="bg-white dark:bg-gray-800 p-4 rounded-lg border border-gray-200 dark:border-gray-700">
           <div className="flex items-center gap-2 mb-2">
             <Clock className="text-yellow-600 dark:text-yellow-400" size={20} />
-            <span className="text-gray-600 dark:text-gray-400">Unverified</span>
+            <span className="text-gray-600 dark:text-gray-400 text-sm">Unverified</span>
           </div>
-          <p className="text-gray-800 dark:text-white">{stats.unverified}</p>
+          <p className="text-2xl font-bold text-gray-800 dark:text-white">{stats.unverified}</p>
         </div>
 
         <div className="bg-white dark:bg-gray-800 p-4 rounded-lg border border-gray-200 dark:border-gray-700">
           <div className="flex items-center gap-2 mb-2">
             <XCircle className="text-red-600 dark:text-red-400" size={20} />
-            <span className="text-gray-600 dark:text-gray-400">Pending Deletion</span>
+            <span className="text-gray-600 dark:text-gray-400 text-sm whitespace-nowrap">Pending Delete</span>
           </div>
-          <p className="text-gray-800 dark:text-white">{stats.pendingDeletion}</p>
+          <p className="text-2xl font-bold text-gray-800 dark:text-white">{stats.pendingDeletion}</p>
         </div>
 
         <div className="bg-white dark:bg-gray-800 p-4 rounded-lg border border-gray-200 dark:border-gray-700">
@@ -224,36 +224,36 @@ export const UserManagement: React.FC = () => {
           </div>
 
           {/* Desktop Table View */}
-          <div className="hidden lg:block overflow-x-auto">
+          <div className="hidden xl:block overflow-x-auto">
             <table className="w-full">
               <thead>
                 <tr className="border-b border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-900">
-                  <th className="text-left py-3 px-4 text-gray-600 dark:text-gray-400">Name</th>
-                  <th className="text-left py-3 px-4 text-gray-600 dark:text-gray-400">Email</th>
-                  <th className="text-left py-3 px-4 text-gray-600 dark:text-gray-400">Student ID</th>
-                  <th className="text-left py-3 px-4 text-gray-600 dark:text-gray-400">Course/Year/Section</th>
-                  <th className="text-left py-3 px-4 text-gray-600 dark:text-gray-400">Role</th>
-                  <th className="text-left py-3 px-4 text-gray-600 dark:text-gray-400">Date Requested</th>
-                  <th className="text-left py-3 px-4 text-gray-600 dark:text-gray-400">Actions</th>
+                  <th className="text-left py-3 px-4 text-gray-600 dark:text-gray-400 text-sm">Name</th>
+                  <th className="text-left py-3 px-4 text-gray-600 dark:text-gray-400 text-sm">Email</th>
+                  <th className="text-left py-3 px-4 text-gray-600 dark:text-gray-400 text-sm">Student ID</th>
+                  <th className="text-left py-3 px-4 text-gray-600 dark:text-gray-400 text-sm">Course/Year/Section</th>
+                  <th className="text-left py-3 px-4 text-gray-600 dark:text-gray-400 text-sm">Role</th>
+                  <th className="text-left py-3 px-4 text-gray-600 dark:text-gray-400 text-sm">Date Requested</th>
+                  <th className="text-left py-3 px-4 text-gray-600 dark:text-gray-400 text-sm">Actions</th>
                 </tr>
               </thead>
               <tbody>
                 {pendingUsers.map(user => (
                   <tr key={user.id} className="border-b border-gray-200 dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-700">
-                    <td className="py-3 px-4 text-gray-800 dark:text-white">
+                    <td className="py-3 px-4 text-gray-800 dark:text-white text-sm">
                       {user.firstName} {user.lastName}
                     </td>
-                    <td className="py-3 px-4 text-gray-800 dark:text-white">{user.email}</td>
-                    <td className="py-3 px-4 text-gray-800 dark:text-white">{user.studentId}</td>
-                    <td className="py-3 px-4 text-gray-800 dark:text-white">
+                    <td className="py-3 px-4 text-gray-800 dark:text-white text-sm">{user.email}</td>
+                    <td className="py-3 px-4 text-gray-800 dark:text-white text-sm">{user.studentId}</td>
+                    <td className="py-3 px-4 text-gray-800 dark:text-white text-sm">
                       {user.course} / {user.yearLevel} / {user.section}
                     </td>
                     <td className="py-3 px-4">
-                      <span className="px-2 py-1 rounded-full bg-purple-100 dark:bg-purple-900/20 text-purple-800 dark:text-purple-400">
+                      <span className="px-2 py-1 rounded-full bg-purple-100 dark:bg-purple-900/20 text-purple-800 dark:text-purple-400 text-xs">
                         Class Representative
                       </span>
                     </td>
-                    <td className="py-3 px-4 text-gray-800 dark:text-white">
+                    <td className="py-3 px-4 text-gray-800 dark:text-white text-sm">
                       {new Date(user.createdAt).toLocaleDateString()}
                     </td>
                     <td className="py-3 px-4">
@@ -281,7 +281,7 @@ export const UserManagement: React.FC = () => {
           </div>
 
           {/* Mobile/Tablet Card View */}
-          <div className="lg:hidden p-4 space-y-4">
+          <div className="xl:hidden p-4 space-y-4">
             {pendingUsers.map(user => (
               <div key={user.id} className="border border-gray-200 dark:border-gray-700 rounded-lg p-4 space-y-3">
                 {/* Header: Name and Role Badge */}
@@ -435,33 +435,33 @@ export const UserManagement: React.FC = () => {
         </div>
 
         {/* Desktop Table View */}
-        <div className="hidden lg:block overflow-x-auto">
+        <div className="hidden xl:block overflow-x-auto">
           <table className="w-full">
             <thead>
               <tr className="border-b border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-900">
-                <th className="text-left py-3 px-4 text-gray-600 dark:text-gray-400">Name</th>
-                <th className="text-left py-3 px-4 text-gray-600 dark:text-gray-400">Email</th>
-                <th className="text-left py-3 px-4 text-gray-600 dark:text-gray-400">Student ID</th>
-                <th className="text-left py-3 px-4 text-gray-600 dark:text-gray-400">Course/Year/Section</th>
-                <th className="text-left py-3 px-4 text-gray-600 dark:text-gray-400">Role</th>
-                <th className="text-left py-3 px-4 text-gray-600 dark:text-gray-400">Status</th>
-                <th className="text-left py-3 px-4 text-gray-600 dark:text-gray-400">Joined</th>
-                <th className="text-left py-3 px-4 text-gray-600 dark:text-gray-400">Actions</th>
+                <th className="text-left py-3 px-4 text-gray-600 dark:text-gray-400 text-sm">Name</th>
+                <th className="text-left py-3 px-4 text-gray-600 dark:text-gray-400 text-sm">Email</th>
+                <th className="text-left py-3 px-4 text-gray-600 dark:text-gray-400 text-sm">Student ID</th>
+                <th className="text-left py-3 px-4 text-gray-600 dark:text-gray-400 text-sm">Course/Year/Section</th>
+                <th className="text-left py-3 px-4 text-gray-600 dark:text-gray-400 text-sm">Role</th>
+                <th className="text-left py-3 px-4 text-gray-600 dark:text-gray-400 text-sm">Status</th>
+                <th className="text-left py-3 px-4 text-gray-600 dark:text-gray-400 text-sm">Joined</th>
+                <th className="text-left py-3 px-4 text-gray-600 dark:text-gray-400 text-sm">Actions</th>
               </tr>
             </thead>
             <tbody>
               {filteredUsers.map(user => (
                 <tr key={user.id} className="border-b border-gray-200 dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-700">
-                  <td className="py-3 px-4 text-gray-800 dark:text-white">
+                  <td className="py-3 px-4 text-gray-800 dark:text-white text-sm">
                     {user.firstName} {user.lastName}
                   </td>
-                  <td className="py-3 px-4 text-gray-800 dark:text-white">{user.email}</td>
-                  <td className="py-3 px-4 text-gray-800 dark:text-white">{user.studentId || '-'}</td>
-                  <td className="py-3 px-4 text-gray-800 dark:text-white">
+                  <td className="py-3 px-4 text-gray-800 dark:text-white text-sm">{user.email}</td>
+                  <td className="py-3 px-4 text-gray-800 dark:text-white text-sm">{user.studentId || '-'}</td>
+                  <td className="py-3 px-4 text-gray-800 dark:text-white text-sm">
                     {user.course} / {user.yearLevel} / {user.section}
                   </td>
                   <td className="py-3 px-4">
-                    <span className={`px-2 py-1 rounded-full ${
+                    <span className={`px-2 py-1 rounded-full text-xs ${
                       user.role === 'class_rep' 
                         ? 'bg-purple-100 dark:bg-purple-900/20 text-purple-800 dark:text-purple-400'
                         : 'bg-blue-100 dark:bg-blue-900/20 text-blue-800 dark:text-blue-400'
@@ -472,24 +472,24 @@ export const UserManagement: React.FC = () => {
                   <td className="py-3 px-4">
                     {user.pendingDeletion ? (
                       <div>
-                        <span className="px-2 py-1 rounded-full bg-red-100 dark:bg-red-900/20 text-red-800 dark:text-red-400">
+                        <span className="px-2 py-1 rounded-full bg-red-100 dark:bg-red-900/20 text-red-800 dark:text-red-400 text-xs">
                           Pending Deletion
                         </span>
-                        <p className="text-gray-500 dark:text-gray-400 mt-1">
+                        <p className="text-gray-500 dark:text-gray-400 mt-1 text-xs">
                           Deletes: {new Date(user.deletionDate!).toLocaleDateString()}
                         </p>
-                        <p className="text-gray-500 dark:text-gray-400">
+                        <p className="text-gray-500 dark:text-gray-400 text-xs">
                           Reason: {user.deletionReason}
                         </p>
                         <button
                           onClick={() => handleCancelDeletion(user.id)}
-                          className="text-blue-600 dark:text-blue-400 hover:underline mt-1"
+                          className="text-blue-600 dark:text-blue-400 hover:underline mt-1 text-xs"
                         >
                           Cancel Deletion
                         </button>
                       </div>
                     ) : (
-                      <span className={`px-2 py-1 rounded-full ${
+                      <span className={`px-2 py-1 rounded-full text-xs ${
                         user.isVerified
                           ? 'bg-green-100 dark:bg-green-900/20 text-green-800 dark:text-green-400'
                           : 'bg-yellow-100 dark:bg-yellow-900/20 text-yellow-800 dark:text-yellow-400'
@@ -522,7 +522,7 @@ export const UserManagement: React.FC = () => {
         </div>
 
         {/* Mobile/Tablet Card View */}
-        <div className="lg:hidden p-4 space-y-4">
+        <div className="xl:hidden p-4 space-y-4">
           {filteredUsers.map(user => (
             <div key={user.id} className="border border-gray-200 dark:border-gray-700 rounded-lg p-4 space-y-3">
               {/* Header: Name and Role */}
