@@ -33,6 +33,23 @@ const AppContent: React.FC = () => {
     localStorage.setItem('lastPage', currentPage);
   }, [currentPage]);
 
+  // Listen for verification success messages from other tabs
+  useEffect(() => {
+    const handleMessage = (event: MessageEvent) => {
+      console.log('📨 Received message:', event.data);
+      if (event.data.type === 'emailVerificationSuccess') {
+        console.log('✅ Email verification successful from other tab:', event.data.email);
+        // Show a brief notification to the user that email was verified
+        const message = `Email verified for ${event.data.email}. You can now sign in.`;
+        console.log('📢 Showing notification:', message);
+        // Optionally show a toast notification here
+      }
+    };
+
+    window.addEventListener('message', handleMessage);
+    return () => window.removeEventListener('message', handleMessage);
+  }, []);
+
   // Initialize localStorage with required data on first load
   useEffect(() => {
     console.log('🚀 App.tsx useEffect - checking for verification link');
@@ -97,7 +114,10 @@ const AppContent: React.FC = () => {
               setShowEmailVerificationModal(false);
               // Clear URL parameters after verification
               window.history.replaceState({}, document.title, window.location.pathname);
-            }} 
+            }}
+            onVerificationSuccess={() => {
+              console.log('✅ Verification successful, staying on signin page');
+            }}
           />
         </>
       );
@@ -109,8 +129,13 @@ const AppContent: React.FC = () => {
             isOpen={showEmailVerificationModal} 
             onClose={() => {
               setShowEmailVerificationModal(false);
+              setAuthView('signin');
               window.history.replaceState({}, document.title, window.location.pathname);
-            }} 
+            }}
+            onVerificationSuccess={() => {
+              console.log('✅ Verification successful, switching to signin view');
+              setAuthView('signin');
+            }}
           />
         </>
       );
