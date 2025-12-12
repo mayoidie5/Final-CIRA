@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { X, Save, User, Mail, Building2, Shield } from 'lucide-react';
+import { X, Save, User, Mail, Building2, Shield, Key, AlertCircle, CheckCircle } from 'lucide-react';
 import { useAuth } from '../contexts/AuthContext';
 import { useTheme } from '../contexts/ThemeContext';
 
@@ -8,7 +8,7 @@ interface SettingsProps {
 }
 
 export const Settings: React.FC<SettingsProps> = ({ onClose }) => {
-  const { user, updateUser } = useAuth();
+  const { user, updateUser, changePassword } = useAuth();
   const { theme, setTheme } = useTheme();
   const [formData, setFormData] = useState({
     firstName: user?.firstName || '',
@@ -16,6 +16,26 @@ export const Settings: React.FC<SettingsProps> = ({ onClose }) => {
     email: user?.email || '',
     department: user?.department || '',
   });
+  const [passwordData, setPasswordData] = useState({
+    currentPassword: '',
+    newPassword: '',
+    confirmPassword: '',
+  });
+  const [showPasswordForm, setShowPasswordForm] = useState(false);
+  const [passwordError, setPasswordError] = useState('');
+  const [passwordSuccess, setPasswordSuccess] = useState(false);
+
+  // Password validation for new password
+  const passwordRequirements = {
+    minLength: passwordData.newPassword.length >= 8,
+    hasUpperCase: /[A-Z]/.test(passwordData.newPassword),
+    hasLowerCase: /[a-z]/.test(passwordData.newPassword),
+    hasNumber: /[0-9]/.test(passwordData.newPassword),
+    hasSpecial: /[!@#$%^&*(),.?":{}|<>]/.test(passwordData.newPassword),
+  };
+
+  const allRequirementsMet = Object.values(passwordRequirements).every(req => req);
+  const passwordsMatch = passwordData.newPassword && passwordData.confirmPassword && passwordData.newPassword === passwordData.confirmPassword;
 
   const handleSave = () => {
     updateUser(formData);
@@ -26,6 +46,49 @@ export const Settings: React.FC<SettingsProps> = ({ onClose }) => {
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const { name, value } = e.target;
     setFormData(prev => ({ ...prev, [name]: value }));
+  };
+
+  const handlePasswordChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const { name, value } = e.target;
+    setPasswordData(prev => ({ ...prev, [name]: value }));
+    setPasswordError('');
+  };
+
+  const handleChangePassword = async () => {
+    setPasswordError('');
+    setPasswordSuccess(false);
+
+    // Validation
+    if (!passwordData.currentPassword) {
+      setPasswordError('Current password is required');
+      return;
+    }
+    if (!passwordData.newPassword) {
+      setPasswordError('New password is required');
+      return;
+    }
+    if (!allRequirementsMet) {
+      setPasswordError('Password does not meet all requirements');
+      return;
+    }
+    if (passwordData.newPassword !== passwordData.confirmPassword) {
+      setPasswordError('New passwords do not match');
+      return;
+    }
+
+    // Change password
+    const result = await changePassword(passwordData.currentPassword, passwordData.newPassword);
+    
+    if (result.success) {
+      setPasswordSuccess(true);
+      setPasswordData({ currentPassword: '', newPassword: '', confirmPassword: '' });
+      setTimeout(() => {
+        setShowPasswordForm(false);
+        setPasswordSuccess(false);
+      }, 2000);
+    } else {
+      setPasswordError(result.error || 'Failed to change password');
+    }
   };
 
   return (
@@ -134,7 +197,118 @@ export const Settings: React.FC<SettingsProps> = ({ onClose }) => {
 
           {/* Theme Settings */}
           <div className="pt-6 border-t border-gray-200 dark:border-gray-700">
-            <h3 className="text-gray-800 dark:text-white mb-4">Theme Preference</h3>
+            <h3 className="text-gray-800 dark:text-white mb-4 flex items-center gap-2">
+              <Key size={20} />
+              Security
+            </h3>
+            {!showPasswordForm ? (
+              <button
+                onClick={() => setShowPasswordForm(true)}
+                className="w-full px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg transition-colors"
+              >
+                Change Password
+              </button>
+            ) : (
+              <div className="space-y-4">
+                {passwordSuccess && (
+                  <div className="p-4 bg-green-50 dark:bg-green-900/20 border border-green-200 dark:border-green-700 rounded-lg">
+                    <p className="text-green-700 dark:text-green-400">✅ Password changed successfully!</p>
+                  </div>
+                )}
+                {passwordError && (
+                  <div className="p-4 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-700 rounded-lg">
+                    <p className="text-red-700 dark:text-red-400">❌ {passwordError}</p>
+                  </div>
+                )}
+                <div>
+                  <label className="block text-gray-700 dark:text-gray-300 mb-2">Current Password</label>
+                  <input
+                    type="password"
+                    name="currentPassword"
+                    value={passwordData.currentPassword}
+                    onChange={handlePasswordChange}
+                    placeholder="Enter your current password"
+                    className="w-full px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 dark:bg-gray-700 dark:text-white"
+                  />
+                </div>
+                <div>
+                  <label className="block text-gray-700 dark:text-gray-300 mb-2">New Password</label>
+                  <input
+                    type="password"
+                    name="newPassword"
+                    value={passwordData.newPassword}
+                    onChange={handlePasswordChange}
+                    placeholder="Enter your new password"
+                    className="w-full px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 dark:bg-gray-700 dark:text-white"
+                  />
+                </div>
+                <div>
+                  <label className="block text-gray-700 dark:text-gray-300 mb-2">Confirm New Password</label>
+                  <input
+                    type="password"
+                    name="confirmPassword"
+                    value={passwordData.confirmPassword}
+                    onChange={handlePasswordChange}
+                    placeholder="Confirm your new password"
+                    className="w-full px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 dark:bg-gray-700 dark:text-white"
+                  />
+                </div>
+
+                {/* Password Requirements */}
+                {passwordData.newPassword && !allRequirementsMet && (
+                  <div className="bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-lg p-3">
+                    <p className="text-red-800 dark:text-red-300 mb-2">Password Requirements:</p>
+                    <ul className="space-y-1 text-sm">
+                      <li className={passwordRequirements.minLength ? 'text-green-600 dark:text-green-400' : 'text-red-600 dark:text-red-400'}>
+                        {passwordRequirements.minLength ? '✓' : '✗'} At least 8 characters
+                      </li>
+                      <li className={passwordRequirements.hasUpperCase ? 'text-green-600 dark:text-green-400' : 'text-red-600 dark:text-red-400'}>
+                        {passwordRequirements.hasUpperCase ? '✓' : '✗'} One uppercase letter
+                      </li>
+                      <li className={passwordRequirements.hasLowerCase ? 'text-green-600 dark:text-green-400' : 'text-red-600 dark:text-red-400'}>
+                        {passwordRequirements.hasLowerCase ? '✓' : '✗'} One lowercase letter
+                      </li>
+                      <li className={passwordRequirements.hasNumber ? 'text-green-600 dark:text-green-400' : 'text-red-600 dark:text-red-400'}>
+                        {passwordRequirements.hasNumber ? '✓' : '✗'} One number
+                      </li>
+                      <li className={passwordRequirements.hasSpecial ? 'text-green-600 dark:text-green-400' : 'text-red-600 dark:text-red-400'}>
+                        {passwordRequirements.hasSpecial ? '✓' : '✗'} One special character
+                      </li>
+                    </ul>
+                  </div>
+                )}
+
+                {/* Password Match Confirmation */}
+                {allRequirementsMet && passwordsMatch && (
+                  <div className="flex items-center gap-2 p-3 bg-green-50 dark:bg-green-900/20 border border-green-200 dark:border-green-800 rounded-lg text-green-600 dark:text-green-400">
+                    <CheckCircle size={20} />
+                    <span>Password match ✓</span>
+                  </div>
+                )}
+                <div className="flex gap-2">
+                  <button
+                    onClick={handleChangePassword}
+                    className="flex-1 px-4 py-2 bg-green-600 hover:bg-green-700 text-white rounded-lg transition-colors"
+                  >
+                    Update Password
+                  </button>
+                  <button
+                    onClick={() => {
+                      setShowPasswordForm(false);
+                      setPasswordData({ currentPassword: '', newPassword: '', confirmPassword: '' });
+                      setPasswordError('');
+                    }}
+                    className="flex-1 px-4 py-2 bg-gray-300 dark:bg-gray-600 hover:bg-gray-400 dark:hover:bg-gray-500 text-gray-800 dark:text-white rounded-lg transition-colors"
+                  >
+                    Cancel
+                  </button>
+                </div>
+              </div>
+            )}
+          </div>
+
+          {/* Theme Settings */}
+          <div className="pt-6 border-t border-gray-200 dark:border-gray-700">
             <div className="grid grid-cols-3 gap-4">
               <button
                 onClick={() => setTheme('light')}

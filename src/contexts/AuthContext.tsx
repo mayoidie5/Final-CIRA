@@ -3,7 +3,7 @@ import { User } from '../types';
 import { initializeAdminAccount } from '../utils/initAdmin';
 import { sendVerificationEmail, markEmailAsVerified } from '../utils/emailService';
 import { auth, db } from '../config/firebase';
-import { createUserWithEmailAndPassword, signInWithEmailAndPassword, signOut, sendPasswordResetEmail, onAuthStateChanged, applyActionCode, isSignInWithEmailLink, parseActionCodeURL } from 'firebase/auth';
+import { createUserWithEmailAndPassword, signInWithEmailAndPassword, signOut, sendPasswordResetEmail, onAuthStateChanged, applyActionCode, isSignInWithEmailLink, parseActionCodeURL, updatePassword } from 'firebase/auth';
 import { doc, setDoc, collection, getDoc, updateDoc, connectFirestoreEmulator, enableNetwork, getDocs } from 'firebase/firestore';
 
 interface AuthContextType {
@@ -14,6 +14,7 @@ interface AuthContextType {
   updateUser: (updates: Partial<User>) => void;
   resendVerification: (email: string) => Promise<void>;
   sendPasswordReset: (email: string) => Promise<{ success: boolean; error?: string }>;
+  changePassword: (currentPassword: string, newPassword: string) => Promise<{ success: boolean; error?: string }>;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -319,8 +320,49 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     }
   };
 
+  const changePassword = async (currentPassword: string, newPassword: string) => {
+    try {
+      const currentUser = auth.currentUser;
+      
+      if (!currentUser || !currentUser.email) {
+        return { success: false, error: 'No user logged in' };
+      }
+
+      // Re-authenticate the user with their current password before changing it
+      // This is required by Firebase for security reasons
+      console.log('🔐 Re-authenticating user before password change...');
+      
+      try {
+        await signInWithEmailAndPassword(auth, currentUser.email, currentPassword);
+      } catch (error: any) {
+        if (error.code === 'auth/wrong-password') {
+          return { success: false, error: 'Current password is incorrect' };
+        }
+        return { success: false, error: 'Failed to verify current password' };
+      }
+
+      // Now update the password
+      await updatePassword(currentUser, newPassword);
+      console.log('✅ Password changed successfully');
+      
+      return { success: true };
+    } catch (error: any) {
+      console.error('❌ Password change error:', error);
+      
+      if (error.code === 'auth/weak-password') {
+        return { success: false, error: 'New password is too weak. Use at least 6 characters.' };
+      } else if (error.code === 'auth/requires-recent-login') {
+        return { success: false, error: 'Please log in again before changing your password' };
+      } else if (error.code === 'auth/operation-not-allowed') {
+        return { success: false, error: 'Password change is not allowed for this account' };
+      }
+      
+      return { success: false, error: error.message || 'Failed to change password' };
+    }
+  };
+
   return (
-    <AuthContext.Provider value={{ user, login, logout, signup, updateUser, resendVerification, sendPasswordReset }}>
+    <AuthContext.Provider value={{ user, login, logout, signup, updateUser, resendVerification, sendPasswordReset, changePassword }}>
       {children}
     </AuthContext.Provider>
   );
