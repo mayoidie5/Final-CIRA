@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Users, CheckCircle, XCircle, Clock, Trash2, Filter, AlertCircle } from 'lucide-react';
+import { Users, CheckCircle, XCircle, Clock, Trash2, Filter, AlertCircle, ChevronDown } from 'lucide-react';
 import { User } from '../types';
 import { FormDialog } from './FormDialog';
 import { ConfirmDialog } from './ConfirmDialog';
@@ -14,12 +14,23 @@ export const UserManagement: React.FC = () => {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [successMessage, setSuccessMessage] = useState<string | null>(null);
+  const [expandedUsers, setExpandedUsers] = useState<Set<string>>(new Set());
   const [filters, setFilters] = useState({
     role: 'all',
     status: 'all',
     course: 'all',
     section: 'all',
   });
+
+  const toggleExpandUser = (userId: string) => {
+    const newExpanded = new Set(expandedUsers);
+    if (newExpanded.has(userId)) {
+      newExpanded.delete(userId);
+    } else {
+      newExpanded.add(userId);
+    }
+    setExpandedUsers(newExpanded);
+  };
 
   useEffect(() => {
     loadUsers();
@@ -282,58 +293,75 @@ export const UserManagement: React.FC = () => {
 
           {/* Mobile/Tablet Card View */}
           <div className="xl:hidden p-4 space-y-4">
-            {pendingUsers.map(user => (
-              <div key={user.id} className="border border-gray-200 dark:border-gray-700 rounded-lg p-4 space-y-3">
-                {/* Header: Name and Role Badge */}
-                <div className="flex items-start justify-between gap-3">
-                  <div>
-                    <p className="text-gray-800 dark:text-white">
-                      {user.firstName} {user.lastName}
-                    </p>
-                    <p className="text-sm text-gray-600 dark:text-gray-400">{user.email}</p>
-                  </div>
-                  <span className="px-2 py-1 rounded-full bg-purple-100 dark:bg-purple-900/20 text-purple-800 dark:text-purple-400 text-sm whitespace-nowrap">
-                    Class Rep
-                  </span>
-                </div>
-
-                {/* Info Grid */}
-                <div className="grid grid-cols-2 gap-3 text-sm">
-                  <div>
-                    <p className="text-gray-600 dark:text-gray-400">Student ID</p>
-                    <p className="text-gray-800 dark:text-white">{user.studentId}</p>
-                  </div>
-                  <div>
-                    <p className="text-gray-600 dark:text-gray-400">Date Requested</p>
-                    <p className="text-gray-800 dark:text-white">{new Date(user.createdAt).toLocaleDateString()}</p>
-                  </div>
-                  <div className="col-span-2">
-                    <p className="text-gray-600 dark:text-gray-400">Course/Year/Section</p>
-                    <p className="text-gray-800 dark:text-white">
-                      {user.course} / {user.yearLevel} / {user.section}
-                    </p>
-                  </div>
-                </div>
-
-                {/* Actions */}
-                <div className="flex gap-2 pt-2">
-                  <button
-                    onClick={() => handleApprove(user.id)}
-                    className="flex-1 flex items-center justify-center gap-2 bg-green-100 dark:bg-green-900/20 text-green-600 dark:text-green-400 py-2 px-4 rounded-lg hover:bg-green-200 dark:hover:bg-green-900/30 transition-colors"
+            {pendingUsers.map(user => {
+              const isExpanded = expandedUsers.has(user.id);
+              return (
+                <div key={user.id} className="border border-gray-200 dark:border-gray-700 rounded-lg overflow-hidden">
+                  {/* Header: Name, Role Badge, and Expand Toggle */}
+                  <div 
+                    onClick={() => toggleExpandUser(user.id)}
+                    className="p-4 bg-white dark:bg-gray-800 flex items-start justify-between gap-3 cursor-pointer hover:bg-gray-50 dark:hover:bg-gray-700/50 transition-colors"
                   >
-                    <CheckCircle size={18} />
-                    Approve
-                  </button>
-                  <button
-                    onClick={() => handleReject(user.id)}
-                    className="flex-1 flex items-center justify-center gap-2 bg-red-100 dark:bg-red-900/20 text-red-600 dark:text-red-400 py-2 px-4 rounded-lg hover:bg-red-200 dark:hover:bg-red-900/30 transition-colors"
-                  >
-                    <XCircle size={18} />
-                    Reject
-                  </button>
+                    <div className="flex-1">
+                      <p className="text-gray-800 dark:text-white">
+                        {user.firstName} {user.lastName}
+                      </p>
+                      <p className="text-sm text-gray-600 dark:text-gray-400">{user.email}</p>
+                    </div>
+                    <div className="flex items-center gap-2 flex-shrink-0">
+                      <span className="px-2 py-1 rounded-full bg-purple-100 dark:bg-purple-900/20 text-purple-800 dark:text-purple-400 text-sm whitespace-nowrap">
+                        Class Rep
+                      </span>
+                      <ChevronDown 
+                        size={20} 
+                        className={`text-gray-600 dark:text-gray-400 transition-transform ${isExpanded ? 'rotate-180' : ''}`}
+                      />
+                    </div>
+                  </div>
+
+                  {/* Expandable Details */}
+                  {isExpanded && (
+                    <div className="bg-gray-50 dark:bg-gray-900 border-t border-gray-200 dark:border-gray-700 p-4 space-y-4">
+                      {/* Info Grid */}
+                      <div className="grid grid-cols-2 gap-3 text-sm">
+                        <div>
+                          <p className="text-gray-600 dark:text-gray-400">Student ID</p>
+                          <p className="text-gray-800 dark:text-white">{user.studentId}</p>
+                        </div>
+                        <div>
+                          <p className="text-gray-600 dark:text-gray-400">Date Requested</p>
+                          <p className="text-gray-800 dark:text-white">{new Date(user.createdAt).toLocaleDateString()}</p>
+                        </div>
+                        <div className="col-span-2">
+                          <p className="text-gray-600 dark:text-gray-400">Course/Year/Section</p>
+                          <p className="text-gray-800 dark:text-white">
+                            {user.course} / {user.yearLevel} / {user.section}
+                          </p>
+                        </div>
+                      </div>
+
+                      {/* Actions */}
+                      <div className="flex gap-2 pt-2">
+                        <button
+                          onClick={() => handleApprove(user.id)}
+                          className="flex-1 flex items-center justify-center gap-2 bg-green-100 dark:bg-green-900/20 text-green-600 dark:text-green-400 py-2 px-4 rounded-lg hover:bg-green-200 dark:hover:bg-green-900/30 transition-colors"
+                        >
+                          <CheckCircle size={18} />
+                          Approve
+                        </button>
+                        <button
+                          onClick={() => handleReject(user.id)}
+                          className="flex-1 flex items-center justify-center gap-2 bg-red-100 dark:bg-red-900/20 text-red-600 dark:text-red-400 py-2 px-4 rounded-lg hover:bg-red-200 dark:hover:bg-red-900/30 transition-colors"
+                        >
+                          <XCircle size={18} />
+                          Reject
+                        </button>
+                      </div>
+                    </div>
+                  )}
                 </div>
-              </div>
-            ))}
+              );
+            })}
           </div>
         </div>
       )}
@@ -523,90 +551,107 @@ export const UserManagement: React.FC = () => {
 
         {/* Mobile/Tablet Card View */}
         <div className="xl:hidden p-4 space-y-4">
-          {filteredUsers.map(user => (
-            <div key={user.id} className="border border-gray-200 dark:border-gray-700 rounded-lg p-4 space-y-3">
-              {/* Header: Name and Role */}
-              <div className="flex items-start justify-between gap-3">
-                <div className="flex-1">
-                  <p className="text-gray-800 dark:text-white">
-                    {user.firstName} {user.lastName}
-                  </p>
-                  <p className="text-sm text-gray-600 dark:text-gray-400 break-all">{user.email}</p>
+          {filteredUsers.map(user => {
+            const isExpanded = expandedUsers.has(user.id);
+            return (
+              <div key={user.id} className="border border-gray-200 dark:border-gray-700 rounded-lg overflow-hidden">
+                {/* Header: Name, Role Badge, and Expand Toggle */}
+                <div 
+                  onClick={() => toggleExpandUser(user.id)}
+                  className="p-4 bg-white dark:bg-gray-800 flex items-start justify-between gap-3 cursor-pointer hover:bg-gray-50 dark:hover:bg-gray-700/50 transition-colors"
+                >
+                  <div className="flex-1">
+                    <p className="text-gray-800 dark:text-white">
+                      {user.firstName} {user.lastName}
+                    </p>
+                    <p className="text-sm text-gray-600 dark:text-gray-400 break-all">{user.email}</p>
+                  </div>
+                  <div className="flex items-center gap-2 flex-shrink-0">
+                    <span className={`px-2 py-1 rounded-full text-xs whitespace-nowrap ${
+                      user.role === 'class_rep' 
+                        ? 'bg-purple-100 dark:bg-purple-900/20 text-purple-800 dark:text-purple-400'
+                        : 'bg-blue-100 dark:bg-blue-900/20 text-blue-800 dark:text-blue-400'
+                    }`}>
+                      {user.role === 'class_rep' ? 'Class Rep' : 'Student'}
+                    </span>
+                    <ChevronDown 
+                      size={20} 
+                      className={`text-gray-600 dark:text-gray-400 transition-transform ${isExpanded ? 'rotate-180' : ''}`}
+                    />
+                  </div>
                 </div>
-                <span className={`px-2 py-1 rounded-full text-xs whitespace-nowrap ${
-                  user.role === 'class_rep' 
-                    ? 'bg-purple-100 dark:bg-purple-900/20 text-purple-800 dark:text-purple-400'
-                    : 'bg-blue-100 dark:bg-blue-900/20 text-blue-800 dark:text-blue-400'
-                }`}>
-                  {user.role === 'class_rep' ? 'Class Rep' : 'Student'}
-                </span>
-              </div>
 
-              {/* Info Grid */}
-              <div className="grid grid-cols-2 gap-3 text-sm">
-                <div>
-                  <p className="text-gray-600 dark:text-gray-400">Student ID</p>
-                  <p className="text-gray-800 dark:text-white">{user.studentId || '-'}</p>
-                </div>
-                <div>
-                  <p className="text-gray-600 dark:text-gray-400">Joined</p>
-                  <p className="text-gray-800 dark:text-white">{new Date(user.createdAt).toLocaleDateString()}</p>
-                </div>
-                <div className="col-span-2">
-                  <p className="text-gray-600 dark:text-gray-400">Course/Year/Section</p>
-                  <p className="text-gray-800 dark:text-white">
-                    {user.course} / {user.yearLevel} / {user.section}
-                  </p>
-                </div>
-                <div className="col-span-2">
-                  <p className="text-gray-600 dark:text-gray-400 mb-1">Status</p>
-                  {user.pendingDeletion ? (
-                    <div className="space-y-2">
-                      <span className="inline-block px-2 py-1 rounded-full bg-red-100 dark:bg-red-900/20 text-red-800 dark:text-red-400 text-xs">
-                        Pending Deletion
-                      </span>
-                      <div className="text-xs space-y-1">
-                        <p className="text-gray-600 dark:text-gray-400">
-                          Deletes: {new Date(user.deletionDate!).toLocaleDateString()}
-                        </p>
-                        <p className="text-gray-600 dark:text-gray-400">
-                          Reason: {user.deletionReason}
+                {/* Expandable Details */}
+                {isExpanded && (
+                  <div className="bg-gray-50 dark:bg-gray-900 border-t border-gray-200 dark:border-gray-700 p-4 space-y-4">
+                    {/* Info Grid */}
+                    <div className="grid grid-cols-2 gap-3 text-sm">
+                      <div>
+                        <p className="text-gray-600 dark:text-gray-400">Student ID</p>
+                        <p className="text-gray-800 dark:text-white">{user.studentId || '-'}</p>
+                      </div>
+                      <div>
+                        <p className="text-gray-600 dark:text-gray-400">Joined</p>
+                        <p className="text-gray-800 dark:text-white">{new Date(user.createdAt).toLocaleDateString()}</p>
+                      </div>
+                      <div className="col-span-2">
+                        <p className="text-gray-600 dark:text-gray-400">Course/Year/Section</p>
+                        <p className="text-gray-800 dark:text-white">
+                          {user.course} / {user.yearLevel} / {user.section}
                         </p>
                       </div>
-                      <button
-                        onClick={() => handleCancelDeletion(user.id)}
-                        className="text-blue-600 dark:text-blue-400 hover:underline text-xs"
-                      >
-                        Cancel Deletion
-                      </button>
+                      <div className="col-span-2">
+                        <p className="text-gray-600 dark:text-gray-400 mb-1">Status</p>
+                        {user.pendingDeletion ? (
+                          <div className="space-y-2">
+                            <span className="inline-block px-2 py-1 rounded-full bg-red-100 dark:bg-red-900/20 text-red-800 dark:text-red-400 text-xs">
+                              Pending Deletion
+                            </span>
+                            <div className="text-xs space-y-1">
+                              <p className="text-gray-600 dark:text-gray-400">
+                                Deletes: {new Date(user.deletionDate!).toLocaleDateString()}
+                              </p>
+                              <p className="text-gray-600 dark:text-gray-400">
+                                Reason: {user.deletionReason}
+                              </p>
+                            </div>
+                            <button
+                              onClick={() => handleCancelDeletion(user.id)}
+                              className="text-blue-600 dark:text-blue-400 hover:underline text-xs"
+                            >
+                              Cancel Deletion
+                            </button>
+                          </div>
+                        ) : (
+                          <span className={`inline-block px-2 py-1 rounded-full text-xs ${
+                            user.isVerified
+                              ? 'bg-green-100 dark:bg-green-900/20 text-green-800 dark:text-green-400'
+                              : 'bg-yellow-100 dark:bg-yellow-900/20 text-yellow-800 dark:text-yellow-400'
+                          }`}>
+                            {user.isVerified ? 'Verified' : 'Unverified'}
+                          </span>
+                        )}
+                      </div>
                     </div>
-                  ) : (
-                    <span className={`inline-block px-2 py-1 rounded-full text-xs ${
-                      user.isVerified
-                        ? 'bg-green-100 dark:bg-green-900/20 text-green-800 dark:text-green-400'
-                        : 'bg-yellow-100 dark:bg-yellow-900/20 text-yellow-800 dark:text-yellow-400'
-                    }`}>
-                      {user.isVerified ? 'Verified' : 'Unverified'}
-                    </span>
-                  )}
-                </div>
-              </div>
 
-              {/* Actions */}
-              {!user.pendingDeletion && (
-                <button
-                  onClick={() => setShowDeleteDialog({ 
-                    userId: user.id, 
-                    userName: `${user.firstName} ${user.lastName}` 
-                  })}
-                  className="w-full flex items-center justify-center gap-2 text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-900/20 py-2 px-4 rounded-lg transition-colors border border-red-200 dark:border-red-800"
-                >
-                  <Trash2 size={18} />
-                  Delete User
-                </button>
-              )}
-            </div>
-          ))}
+                    {/* Actions */}
+                    {!user.pendingDeletion && (
+                      <button
+                        onClick={() => setShowDeleteDialog({ 
+                          userId: user.id, 
+                          userName: `${user.firstName} ${user.lastName}` 
+                        })}
+                        className="w-full flex items-center justify-center gap-2 text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-900/20 py-2 px-4 rounded-lg transition-colors border border-red-200 dark:border-red-800"
+                      >
+                        <Trash2 size={18} />
+                        Delete User
+                      </button>
+                    )}
+                  </div>
+                )}
+              </div>
+            );
+          })}
         </div>
 
         {/* Empty State */}
