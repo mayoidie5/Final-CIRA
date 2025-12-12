@@ -32,6 +32,7 @@ const AppContent: React.FC = () => {
     return typeof window !== 'undefined' ? window.innerWidth >= 1024 : true;
   });
   const [verificationSuccess, setVerificationSuccess] = useState(false);
+  const [processingVerification, setProcessingVerification] = useState(false);
 
   // Check for verification link on mount
   useEffect(() => {
@@ -63,6 +64,7 @@ const AppContent: React.FC = () => {
     // Wait for AuthContext to process it and set the success flag
     if (mode === 'verifyEmail' && oobCode) {
       console.log('📧 Detected email verification link - waiting for AuthContext');
+      setProcessingVerification(true);
       // AuthContext's handleVerificationLink effect runs in parallel
       // It will set the showVerificationSuccess flag when done
       // Check for the flag periodically
@@ -71,6 +73,7 @@ const AppContent: React.FC = () => {
         if (success === 'true') {
           localStorage.removeItem('showVerificationSuccess');
           setVerificationSuccess(true);
+          setProcessingVerification(false);
           clearInterval(checkFlag);
         }
       }, 100);
@@ -78,6 +81,7 @@ const AppContent: React.FC = () => {
       // Clear interval after 5 seconds if flag is not set
       setTimeout(() => {
         clearInterval(checkFlag);
+        setProcessingVerification(false);
       }, 5000);
       
       return;
@@ -185,6 +189,18 @@ const AppContent: React.FC = () => {
           <h1 className="text-4xl font-bold text-gray-900 dark:text-white mb-2">Email Verified!</h1>
           <p className="text-xl text-gray-600 dark:text-gray-400 mb-2">Your email has been successfully verified.</p>
           <p className="text-gray-500 dark:text-gray-500">This tab will close automatically in a moment...</p>
+        </div>
+      </div>
+    );
+  }
+
+  // Show loading screen while processing verification link
+  if (processingVerification) {
+    return (
+      <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100 dark:from-gray-900 dark:to-gray-800 flex items-center justify-center">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto mb-4"></div>
+          <p className="text-gray-600 dark:text-gray-400">Verifying your email...</p>
         </div>
       </div>
     );
