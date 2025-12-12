@@ -92,44 +92,44 @@ export const Dashboard: React.FC<DashboardProps> = ({ onNavigate }) => {
       )}
 
       {/* Stats Cards */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4 lg:gap-6">
-        <div className="bg-white dark:bg-gray-800 p-3 sm:p-4 lg:p-6 rounded-lg shadow border border-gray-200 dark:border-gray-700">
-          <div className="flex items-center justify-between">
-            <div className="min-w-0">
-              <p className="text-gray-600 dark:text-gray-400 truncate">Total Tickets</p>
-              <p className="text-gray-800 dark:text-white mt-2">{userTickets.length}</p>
+      <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-4">
+        <div className="bg-white dark:bg-gray-800 p-4 rounded-lg shadow border border-gray-200 dark:border-gray-700">
+          <div className="flex items-start justify-between gap-4">
+            <div className="flex-1 min-w-0">
+              <p className="text-sm text-gray-600 dark:text-gray-400 font-medium">Total Tickets</p>
+              <p className="text-3xl font-bold text-gray-800 dark:text-white mt-3">{userTickets.length}</p>
             </div>
-            <FileText className="text-blue-600 dark:text-blue-400" size={32} />
+            <FileText className="text-blue-600 dark:text-blue-400 flex-shrink-0" size={28} />
           </div>
         </div>
 
-        <div className="bg-white dark:bg-gray-800 p-3 sm:p-4 lg:p-6 rounded-lg shadow border border-gray-200 dark:border-gray-700">
-          <div className="flex items-center justify-between">
-            <div className="min-w-0">
-              <p className="text-gray-600 dark:text-gray-400 truncate">In Progress</p>
-              <p className="text-gray-800 dark:text-white mt-2">{inProgressCount}</p>
+        <div className="bg-white dark:bg-gray-800 p-4 rounded-lg shadow border border-gray-200 dark:border-gray-700">
+          <div className="flex items-start justify-between gap-4">
+            <div className="flex-1 min-w-0">
+              <p className="text-sm text-gray-600 dark:text-gray-400 font-medium">In Progress</p>
+              <p className="text-3xl font-bold text-gray-800 dark:text-white mt-3">{inProgressCount}</p>
             </div>
-            <Clock className="text-yellow-600 dark:text-yellow-400" size={32} />
+            <Clock className="text-yellow-600 dark:text-yellow-400 flex-shrink-0" size={28} />
           </div>
         </div>
 
-        <div className="bg-white dark:bg-gray-800 p-3 sm:p-4 lg:p-6 rounded-lg shadow border border-gray-200 dark:border-gray-700">
-          <div className="flex items-center justify-between">
-            <div className="min-w-0">
-              <p className="text-gray-600 dark:text-gray-400 truncate">Resolved</p>
-              <p className="text-gray-800 dark:text-white mt-2">{resolvedCount}</p>
+        <div className="bg-white dark:bg-gray-800 p-4 rounded-lg shadow border border-gray-200 dark:border-gray-700">
+          <div className="flex items-start justify-between gap-4">
+            <div className="flex-1 min-w-0">
+              <p className="text-sm text-gray-600 dark:text-gray-400 font-medium">Resolved</p>
+              <p className="text-3xl font-bold text-gray-800 dark:text-white mt-3">{resolvedCount}</p>
             </div>
-            <CheckCircle className="text-green-600 dark:text-green-400" size={32} />
+            <CheckCircle className="text-green-600 dark:text-green-400 flex-shrink-0" size={28} />
           </div>
         </div>
 
-        <div className="bg-white dark:bg-gray-800 p-3 sm:p-4 lg:p-6 rounded-lg shadow border border-gray-200 dark:border-gray-700">
-          <div className="flex items-center justify-between">
-            <div className="min-w-0">
-              <p className="text-gray-600 dark:text-gray-400 truncate">Pending Resolution</p>
-              <p className="text-gray-800 dark:text-white mt-2">{pendingCount}</p>
+        <div className="bg-white dark:bg-gray-800 p-4 rounded-lg shadow border border-gray-200 dark:border-gray-700">
+          <div className="flex items-start justify-between gap-4">
+            <div className="flex-1 min-w-0">
+              <p className="text-sm text-gray-600 dark:text-gray-400 font-medium whitespace-nowrap">Pending Res...</p>
+              <p className="text-3xl font-bold text-gray-800 dark:text-white mt-3">{pendingCount}</p>
             </div>
-            <AlertCircle className="text-orange-600 dark:text-orange-400" size={32} />
+            <AlertCircle className="text-orange-600 dark:text-orange-400 flex-shrink-0" size={28} />
           </div>
         </div>
       </div>
