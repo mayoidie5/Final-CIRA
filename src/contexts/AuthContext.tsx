@@ -1,9 +1,9 @@
 import React, { createContext, useContext, useState, useEffect } from 'react';
 import { User } from '../types';
 import { initializeAdminAccount } from '../utils/initAdmin';
-import { sendVerificationEmail } from '../utils/emailService';
+import { sendVerificationEmail, markEmailAsVerified } from '../utils/emailService';
 import { auth, db } from '../config/firebase';
-import { createUserWithEmailAndPassword, signInWithEmailAndPassword, signOut, sendPasswordResetEmail } from 'firebase/auth';
+import { createUserWithEmailAndPassword, signInWithEmailAndPassword, signOut, sendPasswordResetEmail, onAuthStateChanged, applyActionCode, isSignInWithEmailLink, parseActionCodeURL } from 'firebase/auth';
 import { doc, setDoc, collection, getDoc, updateDoc, connectFirestoreEmulator, enableNetwork, getDocs } from 'firebase/firestore';
 
 interface AuthContextType {
@@ -21,8 +21,8 @@ const AuthContext = createContext<AuthContextType | undefined>(undefined);
 export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const [user, setUser] = useState<User | null>(null);
 
+  // Initialize on first load
   useEffect(() => {
-    // Initialize admin account on first load
     const init = async () => {
       try {
         await initializeAdminAccount();
@@ -37,6 +37,77 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     if (storedUser) {
       setUser(JSON.parse(storedUser));
     }
+  }, []);
+
+  // Handle Firebase verification links (run once on mount)
+  useEffect(() => {
+    const handleVerificationLink = async () => {
+      try {
+        const url = new URL(window.location.href);
+        const mode = url.searchParams.get('mode');
+        const oobCode = url.searchParams.get('oobCode');
+        const apiKey = url.searchParams.get('apiKey');
+        
+        // Check if this is a Firebase auth action URL
+        if (mode && oobCode) {
+          console.log('🔗 Detected Firebase auth action URL');
+          console.log('   Mode:', mode);
+          console.log('   Code:', oobCode.substring(0, 10) + '...');
+          
+          try {
+            // Try to parse the action code URL to verify it's valid
+            const actionCodeInfo = await parseActionCodeURL(auth, oobCode);
+            console.log('✅ Valid Firebase action code detected');
+            console.log('   Operation:', actionCodeInfo.operation);
+            
+            // Apply the verification code - this marks the email as verified in Firebase Auth
+            await applyActionCode(auth, oobCode);
+            console.log('✅ Email verified successfully via Firebase');
+            
+            // Refresh the user's ID token to get updated claims
+            const currentUser = auth.currentUser;
+            if (currentUser) {
+              await currentUser.reload();
+              console.log('🔄 User reloaded with verified status');
+              console.log('   Email verified:', currentUser.emailVerified);
+            }
+            
+            // Show success message before closing
+            console.log('🎉 Email verification complete! Closing tab in 2 seconds...');
+            
+            // Notify any other tabs that verification is complete
+            localStorage.setItem('verificationComplete', JSON.stringify({
+              timestamp: Date.now(),
+              verified: true
+            }));
+            
+            // Wait 2 seconds to show the success message, then close the tab
+            setTimeout(() => {
+              window.close();
+            }, 2000);
+            
+          } catch (error: any) {
+            console.error('❌ Failed to apply verification code:', error);
+            if (error.code === 'auth/invalid-action-code') {
+              console.error('   Error: Invalid or expired verification code');
+            } else if (error.code === 'auth/expired-action-code') {
+              console.error('   Error: Verification code has expired');
+            } else {
+              console.error('   Error details:', error);
+            }
+            
+            // Try closing anyway after showing error for a bit
+            setTimeout(() => {
+              window.close();
+            }, 3000);
+          }
+        }
+      } catch (error) {
+        console.error('❌ Error checking verification link:', error);
+      }
+    };
+
+    handleVerificationLink();
   }, []);
 
   const login = async (email: string, password: string) => {
@@ -78,16 +149,24 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
       let foundUser = userDoc.data() as User;
 
-      // CHECK FIRESTORE FOR VERIFICATION STATUS - THIS IS THE SOURCE OF TRUTH
-      console.log('🔍 Checking verification status:');
+      // CHECK FIREBASE AUTH EMAIL VERIFICATION - THIS IS THE SOURCE OF TRUTH
+      console.log('🔍 Checking email verification status:');
       console.log('   User ID:', firebaseUser.uid);
       console.log('   Email from login:', email);
-      console.log('   Email in Firestore:', foundUser.email);
+      console.log('   Email verified in Firebase Auth:', firebaseUser.emailVerified);
       console.log('   isVerified in Firestore:', foundUser.isVerified);
       
-      if (!foundUser.isVerified) {
+      // Use Firebase's emailVerified flag as the source of truth
+      if (!firebaseUser.emailVerified) {
         console.log('📧 Email verification required for:', email);
         return { success: false, needsVerification: true, error: 'Email not verified. Please check your inbox for the verification link.' };
+      }
+
+      // If Firebase Auth shows verified but Firestore doesn't, update Firestore
+      if (!foundUser.isVerified && firebaseUser.emailVerified) {
+        console.log('🔄 Updating Firestore isVerified flag to match Firebase Auth');
+        await markEmailAsVerified(firebaseUser.uid);
+        foundUser.isVerified = true;
       }
 
       setUser(foundUser);
@@ -170,7 +249,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       users.push(newUser);
       localStorage.setItem('users', JSON.stringify(users));
 
-      // Send verification email
+      // Send Firebase's built-in verification email
       try {
         console.log('📧 About to send verification email to:', userData.email!);
         await sendVerificationEmail(userData.email!);

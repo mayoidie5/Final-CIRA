@@ -5,7 +5,6 @@ import { NotificationProvider } from './contexts/NotificationContext';
 import { SignIn } from './components/SignIn';
 import { SignUp } from './components/SignUp';
 import { Header } from './components/Header';
-import { EmailVerificationModal } from './components/EmailVerification';
 import { Dashboard } from './components/Dashboard';
 import { ReportIssue } from './components/ReportIssue';
 import { TicketList } from './components/TicketList';
@@ -14,7 +13,7 @@ import { FormEditor } from './components/FormEditor';
 import { Archive } from './components/Archive';
 import { Settings } from './components/Settings';
 import { Tutorial } from './components/Tutorial';
-import { LayoutDashboard, FileText, Plus, Users, Edit, Archive as ArchiveIcon, Menu, X, HelpCircle } from 'lucide-react';
+import { LayoutDashboard, FileText, Plus, Users, Edit, Archive as ArchiveIcon, Menu, X, HelpCircle, CheckCircle } from 'lucide-react';
 
 const AppContent: React.FC = () => {
   const { user } = useAuth();
@@ -29,25 +28,43 @@ const AppContent: React.FC = () => {
     // Sidebar closed by default on mobile (< 1024px), open on desktop
     return typeof window !== 'undefined' ? window.innerWidth >= 1024 : true;
   });
-  const [showEmailVerificationModal, setShowEmailVerificationModal] = useState(false);
+  const [verificationSuccess, setVerificationSuccess] = useState(false);
+
+  // Check for verification link on mount
+  useEffect(() => {
+    const url = new URL(window.location.href);
+    const mode = url.searchParams.get('mode');
+    const oobCode = url.searchParams.get('oobCode');
+    const verifying = url.searchParams.get('verifying');
+    
+    // Check if user came from Firebase verification (verifying=true means they just verified)
+    if (verifying === 'true') {
+      console.log('✅ User returned from Firebase verification');
+      setVerificationSuccess(true);
+      
+      // Clean up the URL
+      window.history.replaceState({}, document.title, window.location.pathname);
+      
+      // Close tab after 2 seconds
+      setTimeout(() => {
+        window.close();
+      }, 2000);
+      return;
+    }
+    
+    // Check if this is a direct verification code link
+    if (mode === 'verifyEmail' && oobCode) {
+      // Show success message after a brief delay to ensure verification is complete
+      setTimeout(() => {
+        setVerificationSuccess(true);
+      }, 500);
+    }
+  }, []);
 
   // Save current page to localStorage whenever it changes
   useEffect(() => {
     localStorage.setItem('lastPage', currentPage);
   }, [currentPage]);
-
-  // Listen for verification success messages from other tabs
-  useEffect(() => {
-    const handleMessage = (event: MessageEvent) => {
-      console.log('📨 Received message:', event.data);
-      if (event.data.type === 'emailVerificationSuccess') {
-        console.log('✅ Email verification successful from other tab:', event.data.email);
-      }
-    };
-
-    window.addEventListener('message', handleMessage);
-    return () => window.removeEventListener('message', handleMessage);
-  }, []);
 
   // Handle window resize to manage sidebar visibility
   useEffect(() => {
@@ -67,53 +84,24 @@ const AppContent: React.FC = () => {
 
   // Initialize localStorage with required data on first load
   useEffect(() => {
-    console.log('🚀 App.tsx useEffect - checking for verification link');
-    console.log('📍 Current URL:', window.location.href);
-    console.log('📍 Pathname:', window.location.pathname);
-    console.log('📍 Search:', window.location.search);
-    console.log('📍 Hash:', window.location.hash);
-    
     if (!localStorage.getItem('notifications')) {
       localStorage.setItem('notifications', JSON.stringify([]));
     }
-
-    // Check if user arrived from email verification link
-    const urlParams = new URLSearchParams(window.location.search);
-    const hashParams = new URLSearchParams(window.location.hash.slice(1));
-    
-    // Check for verification parameters in query string or hash
-    let token = urlParams.get('verify') || hashParams.get('verify');
-    let email = urlParams.get('email') || hashParams.get('email');
-    
-    console.log('🔍 Checking for verification parameters:');
-    console.log('   Token (verify param):', token);
-    console.log('   Email param:', email);
-    
-    // Fallback: try path-based verification for backwards compatibility
-    const pathname = window.location.pathname;
-    const pathParts = pathname.split('/').filter(p => p);
-    
-    if (!token && !email && pathParts[0] === 'verify' && pathParts.length >= 3) {
-      token = decodeURIComponent(pathParts[1]);
-      email = decodeURIComponent(pathParts[2]);
-      console.log('✅ Verification link detected from path (legacy)');
-      console.log('   Token:', token);
-      console.log('   Email:', email);
-    } else if (token && email) {
-      console.log('✅ Verification link detected from query params');
-      console.log('   Token:', token);
-      console.log('   Email:', email);
-    }
-    
-    if (token && email) {
-      console.log('✅ Verification link detected, opening modal');
-      console.log('   Setting showEmailVerificationModal = true');
-      setShowEmailVerificationModal(true);
-      return;
-    }
-    
-    console.log('⚠️ No token/email found in URL');
   }, []);
+
+  // Show verification success screen
+  if (verificationSuccess) {
+    return (
+      <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100 dark:from-gray-900 dark:to-gray-800 flex items-center justify-center">
+        <div className="text-center">
+          <CheckCircle className="w-20 h-20 text-green-500 mx-auto mb-6 animate-pulse" />
+          <h1 className="text-4xl font-bold text-gray-900 dark:text-white mb-2">Email Verified!</h1>
+          <p className="text-xl text-gray-600 dark:text-gray-400 mb-2">Your email has been successfully verified.</p>
+          <p className="text-gray-500 dark:text-gray-500">This tab will close automatically in a moment...</p>
+        </div>
+      </div>
+    );
+  }
 
   if (!user) {
     if (authView === 'signin') {
@@ -123,35 +111,12 @@ const AppContent: React.FC = () => {
             onSwitchToSignUp={() => setAuthView('signup')}
             onSignInSuccess={() => setCurrentPage('dashboard')}
           />
-          <EmailVerificationModal 
-            isOpen={showEmailVerificationModal} 
-            onClose={() => {
-              setShowEmailVerificationModal(false);
-              // Clear URL parameters after verification
-              window.history.replaceState({}, document.title, window.location.pathname);
-            }}
-            onVerificationSuccess={() => {
-              console.log('✅ Verification successful, staying on signin page');
-            }}
-          />
         </>
       );
     } else {
       return (
         <>
           <SignUp onSwitchToSignIn={() => setAuthView('signin')} />
-          <EmailVerificationModal 
-            isOpen={showEmailVerificationModal} 
-            onClose={() => {
-              setShowEmailVerificationModal(false);
-              setAuthView('signin');
-              window.history.replaceState({}, document.title, window.location.pathname);
-            }}
-            onVerificationSuccess={() => {
-              console.log('✅ Verification successful, switching to signin view');
-              setAuthView('signin');
-            }}
-          />
         </>
       );
     }
