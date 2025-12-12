@@ -41,6 +41,14 @@ const AppContent: React.FC = () => {
     const oobCode = url.searchParams.get('oobCode');
     const verifying = url.searchParams.get('verifying');
     
+    // Check if AuthContext has already processed email verification
+    const showSuccess = localStorage.getItem('showVerificationSuccess');
+    if (showSuccess === 'true') {
+      localStorage.removeItem('showVerificationSuccess');
+      setVerificationSuccess(true);
+      return;
+    }
+    
     // Handle password reset code from email link
     // MUST be checked FIRST to prevent auto-close
     if (mode === 'resetPassword' && oobCode) {
@@ -52,18 +60,10 @@ const AppContent: React.FC = () => {
     
     // Handle email verification code from email link
     // Email verification is handled automatically by AuthContext
-    // Show verification success screen
+    // AuthContext will apply the code and close the tab
     if (mode === 'verifyEmail' && oobCode) {
-      console.log('📧 Detected email verification link - showing success screen');
-      setVerificationSuccess(true);
-      
-      // Clean up the URL
-      window.history.replaceState({}, document.title, window.location.pathname);
-      
-      // Close tab after 2 seconds
-      setTimeout(() => {
-        window.close();
-      }, 2000);
+      console.log('📧 Detected email verification link - AuthContext will handle');
+      // AuthContext's handleVerificationLink effect runs in parallel and handles everything
       return;
     }
     

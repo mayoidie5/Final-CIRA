@@ -70,6 +70,9 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
                 console.log('   Email verified:', currentUser.emailVerified);
               }
               
+              // Set flag so App.tsx can show success screen
+              localStorage.setItem('showVerificationSuccess', 'true');
+              
               // Show success message before closing
               console.log('🎉 Email verification complete! Closing tab in 2 seconds...');
               

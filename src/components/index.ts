@@ -17,6 +17,7 @@ export { ConfirmDialog } from './ConfirmDialog';
 export { Tooltip } from './Tooltip';
 export { EmailVerificationModal } from './EmailVerification';
 export { AccountCreatedModal } from './AccountCreatedModal';
+export { ResendVerificationModal } from './ResendVerificationModal';
 export { NotificationList } from './NotificationList';
 export { NotificationBadgeIcon } from './NotificationBadgeIcon';
 
