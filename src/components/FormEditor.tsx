@@ -22,6 +22,7 @@ export const FormEditor: React.FC = () => {
   const [expandedBuildings, setExpandedBuildings] = useState<Set<string>>(new Set());
   const [expandedIssueTypes, setExpandedIssueTypes] = useState<Set<number>>(new Set());
   const [showPreview, setShowPreview] = useState(false);
+  const [deleteConfirm, setDeleteConfirm] = useState<{ type: string; index?: number; parentIndices?: number[] } | null>(null);
   
   // Preview form state
   const [previewCampus, setPreviewCampus] = useState<string>('');
@@ -108,12 +109,7 @@ export const FormEditor: React.FC = () => {
   };
 
   const deleteCampus = (index: number) => {
-    if (confirm('Are you sure you want to delete this campus? All buildings and rooms under it will be deleted.')) {
-      setFormConfig(prev => {
-        const newCampuses = prev.campuses.filter((_, i) => i !== index);
-        return { ...prev, campuses: newCampuses };
-      });
-    }
+    setDeleteConfirm({ type: 'campus', index });
   };
 
   // Building operations
@@ -1242,6 +1238,25 @@ export const FormEditor: React.FC = () => {
         <SuccessToast
           message="Form configuration saved successfully!"
           onClose={() => setShowSuccessToast(false)}
+        />
+      )}
+
+      {/* Delete Confirmation Dialog */}
+      {deleteConfirm && deleteConfirm.type === 'campus' && (
+        <ConfirmDialog
+          title="Delete Campus"
+          message={`Are you sure you want to delete this campus? All buildings and rooms under it will be deleted.`}
+          confirmText="Delete"
+          cancelText="Cancel"
+          type="danger"
+          onConfirm={() => {
+            setFormConfig(prev => {
+              const newCampuses = prev.campuses.filter((_, i) => i !== deleteConfirm.index);
+              return { ...prev, campuses: newCampuses };
+            });
+            setDeleteConfirm(null);
+          }}
+          onCancel={() => setDeleteConfirm(null)}
         />
       )}
     </div>
