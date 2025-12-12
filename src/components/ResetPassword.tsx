@@ -99,11 +99,6 @@ export const ResetPassword: React.FC<ResetPasswordProps> = ({ oobCode }) => {
       await confirmPasswordReset(auth, oobCode, newPassword);
       console.log('✅ Password reset successfully');
       setSuccess(true);
-
-      // Redirect to signin after 3 seconds
-      setTimeout(() => {
-        window.location.href = window.location.origin + '/signin';
-      }, 3000);
     } catch (err: any) {
       console.error('❌ Password reset error:', err);
       setError('Failed to reset password. Please try again or request a new reset link.');
