@@ -16,9 +16,10 @@ export const Dashboard: React.FC<DashboardProps> = ({ onNavigate }) => {
   const getUserTickets = () => {
     if (user?.role === 'admin') {
       return tickets.filter(t => t.status !== 'resolved' && t.status !== 'submitted');
-    } else if (user?.role === 'class_rep') {
+    } else if (user?.role === 'class_rep' && !user?.isPending) {
       return tickets.filter(t => t.acceptedBy === user.id || t.status === 'submitted');
     } else {
+      // Students and pending class_reps see only their own tickets
       return tickets.filter(t => t.userId === user?.id);
     }
   };

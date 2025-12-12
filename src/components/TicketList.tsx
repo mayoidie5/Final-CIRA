@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Search, Filter, Eye, FileText, X } from 'lucide-react';
+import { Search, Filter, Eye, FileText, X, AlertCircle } from 'lucide-react';
 import { useAuth } from '../contexts/AuthContext';
 import { useTickets } from '../hooks/useTickets';
 import { Ticket, FormConfig } from '../types';
@@ -82,11 +82,14 @@ export const TicketList: React.FC<TicketListProps> = ({ view = 'all', selectedTi
     if (user?.role === 'student') {
       userTickets = tickets.filter(t => t.userId === user.id && t.status !== 'resolved');
     } else if (user?.role === 'class_rep') {
-      if (view === 'my-tickets') {
-        // Only show tickets created by the class rep
+      if (user?.isPending) {
+        // Pending class_rep: only see their own tickets like a student
+        userTickets = tickets.filter(t => t.userId === user.id && t.status !== 'resolved');
+      } else if (view === 'my-tickets') {
+        // Approved class_rep - show tickets created by the class rep
         userTickets = tickets.filter(t => t.userId === user.id && t.status !== 'resolved');
       } else if (view === 'review') {
-        // Only show tickets created by students (not by class rep themselves)
+        // Approved class_rep - show tickets created by students (not by class rep themselves)
         userTickets = tickets.filter(t => 
           t.userId !== user.id && 
           (t.acceptedBy === user.id || t.status === 'submitted') && 
@@ -156,11 +159,27 @@ export const TicketList: React.FC<TicketListProps> = ({ view = 'all', selectedTi
     return <TicketDetails ticket={selectedTicket} onBack={() => setSelectedTicket(null)} />;
   }
 
+  // Check if class_rep is pending - show banner but allow access to own tickets
+  const isPendingClassRep = user?.role === 'class_rep' && user?.isPending;
+
   return (
     <div className="max-w-7xl mx-auto p-4 sm:p-6">
       <div className="bg-white dark:bg-gray-800 rounded-lg shadow border border-gray-200 dark:border-gray-700">
         <div className="p-4 sm:p-6 border-b border-gray-200 dark:border-gray-700">
           <h2 className="text-gray-800 dark:text-white mb-4">{getTitle()}</h2>
+
+          {/* Pending Class Rep Banner */}
+          {isPendingClassRep && (
+            <div className="mb-4 bg-yellow-50 dark:bg-yellow-900/20 border border-yellow-200 dark:border-yellow-800 rounded-lg p-3 flex items-start gap-3">
+              <AlertCircle className="text-yellow-600 dark:text-yellow-400 flex-shrink-0 mt-0.5" size={18} />
+              <div>
+                <h3 className="font-semibold text-yellow-800 dark:text-yellow-200 text-sm">Pending Admin Approval</h3>
+                <p className="text-yellow-700 dark:text-yellow-300 text-xs mt-0.5">
+                  You can view your own ticket history. Once approved by an administrator, you'll be able to review student tickets.
+                </p>
+              </div>
+            </div>
+          )}
 
           <div className="flex flex-col sm:flex-row gap-2 sm:gap-3">
             <div className="flex-1 relative">
