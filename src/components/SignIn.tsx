@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { Eye, EyeOff, AlertCircle, Moon, Sun } from 'lucide-react';
 import { useAuth } from '../contexts/AuthContext';
 import { useTheme } from '../contexts/ThemeContext';
+import { ResendVerificationModal } from './ResendVerificationModal';
 import logoNavyBlue from '../../assets/MainLogoNavyBlue.png';
 import logoWhite from '../../assets/MainLogoWhite.png';
 
@@ -12,13 +13,14 @@ interface SignInProps {
 }
 
 export const SignIn: React.FC<SignInProps> = ({ onSwitchToSignUp, onSwitchToForgotPassword, onSignInSuccess }) => {
-  const { login, resendVerification } = useAuth();
+  const { login } = useAuth();
   const { theme, setTheme } = useTheme();
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
   const [error, setError] = useState('');
-  const [needsVerification, setNeedsVerification] = useState(false);
+  const [showVerificationModal, setShowVerificationModal] = useState(false);
+  const [unverifiedEmail, setUnverifiedEmail] = useState('');
   const [loading, setLoading] = useState(false);
 
   const isDark = theme === 'dark';
@@ -26,7 +28,7 @@ export const SignIn: React.FC<SignInProps> = ({ onSwitchToSignUp, onSwitchToForg
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError('');
-    setNeedsVerification(false);
+    setShowVerificationModal(false);
     setLoading(true);
 
     // Auto-append @plv.edu.ph to email if not already present
@@ -38,17 +40,11 @@ export const SignIn: React.FC<SignInProps> = ({ onSwitchToSignUp, onSwitchToForg
     if (result.success) {
       onSignInSuccess();
     } else if (result.needsVerification) {
-      setNeedsVerification(true);
-      setError(result.error || '');
+      setUnverifiedEmail(fullEmail);
+      setShowVerificationModal(true);
     } else {
       setError(result.error || 'Login failed');
     }
-  };
-
-  const handleResendVerification = async () => {
-    const fullEmail = email.includes('@') ? email : `${email}@plv.edu.ph`;
-    await resendVerification(fullEmail);
-    alert('Verification email sent!');
   };
 
   const handleEmailChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -158,21 +154,6 @@ export const SignIn: React.FC<SignInProps> = ({ onSwitchToSignUp, onSwitchToForg
               </div>
             )}
 
-            {needsVerification && (
-              <div className="p-3 bg-yellow-50 dark:bg-yellow-900/20 border border-yellow-200 dark:border-yellow-800 rounded-lg">
-                <p className="text-yellow-800 dark:text-yellow-400 mb-2">
-                  Your email is not verified. Please check your inbox.
-                </p>
-                <button
-                  type="button"
-                  onClick={handleResendVerification}
-                  className="text-blue-600 dark:text-blue-400 hover:underline"
-                >
-                  Resend verification email
-                </button>
-              </div>
-            )}
-
             <button
               type="submit"
               disabled={loading}
@@ -205,6 +186,13 @@ export const SignIn: React.FC<SignInProps> = ({ onSwitchToSignUp, onSwitchToForg
           </div>
         </div>
       </div>
+
+      {showVerificationModal && (
+        <ResendVerificationModal 
+          email={unverifiedEmail} 
+          onClose={() => setShowVerificationModal(false)}
+        />
+      )}
     </div>
   );
 };
