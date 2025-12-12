@@ -696,19 +696,19 @@ export const SignUp: React.FC<SignUpProps> = ({ onSwitchToSignIn }) => {
               <div className="bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-lg p-3">
                 <p className="text-red-800 dark:text-red-300 mb-2">Password Requirements:</p>
                 <ul className="space-y-1 text-sm">
-                  <li className={passwordRequirements.minLength ? 'text-gray-600 dark:text-gray-400' : 'text-red-600 dark:text-red-400'}>
+                  <li className={passwordRequirements.minLength ? 'text-green-600 dark:text-green-400' : 'text-red-600 dark:text-red-400'}>
                     {passwordRequirements.minLength ? '✓' : '✗'} At least 8 characters
                   </li>
-                  <li className={passwordRequirements.hasUpperCase ? 'text-gray-600 dark:text-gray-400' : 'text-red-600 dark:text-red-400'}>
+                  <li className={passwordRequirements.hasUpperCase ? 'text-green-600 dark:text-green-400' : 'text-red-600 dark:text-red-400'}>
                     {passwordRequirements.hasUpperCase ? '✓' : '✗'} One uppercase letter
                   </li>
-                  <li className={passwordRequirements.hasLowerCase ? 'text-gray-600 dark:text-gray-400' : 'text-red-600 dark:text-red-400'}>
+                  <li className={passwordRequirements.hasLowerCase ? 'text-green-600 dark:text-green-400' : 'text-red-600 dark:text-red-400'}>
                     {passwordRequirements.hasLowerCase ? '✓' : '✗'} One lowercase letter
                   </li>
-                  <li className={passwordRequirements.hasNumber ? 'text-gray-600 dark:text-gray-400' : 'text-red-600 dark:text-red-400'}>
+                  <li className={passwordRequirements.hasNumber ? 'text-green-600 dark:text-green-400' : 'text-red-600 dark:text-red-400'}>
                     {passwordRequirements.hasNumber ? '✓' : '✗'} One number
                   </li>
-                  <li className={passwordRequirements.hasSpecial ? 'text-gray-600 dark:text-gray-400' : 'text-red-600 dark:text-red-400'}>
+                  <li className={passwordRequirements.hasSpecial ? 'text-green-600 dark:text-green-400' : 'text-red-600 dark:text-red-400'}>
                     {passwordRequirements.hasSpecial ? '✓' : '✗'} One special character
                   </li>
                 </ul>
