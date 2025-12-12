@@ -57,25 +57,6 @@ export const Dashboard: React.FC<DashboardProps> = ({ onNavigate }) => {
             {user?.role === 'admin' ? 'Admin Dashboard' : user?.role === 'class_rep' && !user?.isPending ? 'Class Representative Dashboard' : user?.role === 'class_rep' && user?.isPending ? 'Class Representative Dashboard (Pending Approval)' : 'Student Dashboard'}
           </p>
         </div>
-        {user?.role === 'admin' && (
-          <button
-            onClick={async () => {
-              if (window.confirm('Restore sample tickets? This will add test data.')) {
-                try {
-                  const count = await restoreSampleTickets();
-                  alert(`✅ Restored ${count} sample tickets!`);
-                  window.location.reload();
-                } catch (error) {
-                  alert('❌ Error restoring tickets: ' + (error as any).message);
-                }
-              }
-            }}
-            className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
-          >
-            <RotateCcw size={18} />
-            Restore Data
-          </button>
-        )}
       </div>
 
       {/* Pending Class Rep Approval Banner */}
