@@ -912,6 +912,7 @@ export const FormEditor: React.FC = () => {
               fields={[{ name: 'name', label: 'Campus Name', type: 'text', required: true }]}
               onSubmit={(data) => editCampus(showDialog.data.campusIndex, data)}
               onCancel={() => setShowDialog(null)}
+              initialData={{ name: showDialog.data.name }}
             />
           )}
           {showDialog.type === 'building' && (
@@ -928,6 +929,7 @@ export const FormEditor: React.FC = () => {
               fields={[{ name: 'name', label: 'Building Name', type: 'text', required: true }]}
               onSubmit={(data) => editBuilding(showDialog.data.campusIndex, showDialog.data.buildingIndex, data)}
               onCancel={() => setShowDialog(null)}
+              initialData={{ name: showDialog.data.name }}
             />
           )}
           {showDialog.type === 'room' && (
@@ -944,6 +946,7 @@ export const FormEditor: React.FC = () => {
               fields={[{ name: 'name', label: 'Room Name', type: 'text', required: true }]}
               onSubmit={(data) => editRoom(showDialog.data.campusIndex, showDialog.data.buildingIndex, showDialog.data.roomIndex, data)}
               onCancel={() => setShowDialog(null)}
+              initialData={{ name: showDialog.data.name }}
             />
           )}
           {showDialog.type === 'unitId' && (
@@ -960,6 +963,7 @@ export const FormEditor: React.FC = () => {
               fields={[{ name: 'unitId', label: 'Unit ID', type: 'text', required: true }]}
               onSubmit={(data) => editUnitId(showDialog.data.campusIndex, showDialog.data.buildingIndex, showDialog.data.roomIndex, showDialog.data.unitIdIndex, data)}
               onCancel={() => setShowDialog(null)}
+              initialData={{ unitId: showDialog.data.unitId }}
             />
           )}
           {showDialog.type === 'issueType' && (
@@ -976,6 +980,7 @@ export const FormEditor: React.FC = () => {
               fields={[{ name: 'name', label: 'Issue Type Name', type: 'text', required: true }]}
               onSubmit={(data) => editIssueType(showDialog.data.issueTypeIndex, data)}
               onCancel={() => setShowDialog(null)}
+              initialData={{ name: showDialog.data.name }}
             />
           )}
           {showDialog.type === 'subtype' && (
@@ -992,6 +997,7 @@ export const FormEditor: React.FC = () => {
               fields={[{ name: 'subtype', label: 'Subtype', type: 'text', required: true }]}
               onSubmit={(data) => editSubtype(showDialog.data.issueTypeIndex, showDialog.data.subtypeIndex, data)}
               onCancel={() => setShowDialog(null)}
+              initialData={{ subtype: showDialog.data.subtype }}
             />
           )}
         </>

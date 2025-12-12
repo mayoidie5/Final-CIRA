@@ -16,6 +16,7 @@ interface FormDialogProps {
   onSubmit: (data: Record<string, any>) => void;
   onCancel: () => void;
   submitLabel?: string;
+  initialData?: Record<string, any>;
 }
 
 export const FormDialog: React.FC<FormDialogProps> = ({
@@ -24,8 +25,9 @@ export const FormDialog: React.FC<FormDialogProps> = ({
   onSubmit,
   onCancel,
   submitLabel = 'Submit',
+  initialData = {},
 }) => {
-  const [formData, setFormData] = useState<Record<string, any>>({});
+  const [formData, setFormData] = useState<Record<string, any>>(initialData);
 
   const handleChange = (name: string, value: any) => {
     setFormData(prev => ({ ...prev, [name]: value }));
@@ -38,8 +40,8 @@ export const FormDialog: React.FC<FormDialogProps> = ({
 
   return (
     <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
-      <div className="bg-white dark:bg-gray-800 rounded-lg shadow-xl max-w-md w-full">
-        <div className="p-6 border-b border-gray-200 dark:border-gray-700 flex items-center justify-between">
+      <div className="bg-white dark:bg-gray-800 rounded-lg shadow-xl max-w-md w-full max-h-[90vh] flex flex-col">
+        <div className="p-6 border-b border-gray-200 dark:border-gray-700 flex items-center justify-between flex-shrink-0">
           <h3 className="text-gray-800 dark:text-white">{title}</h3>
           <button
             onClick={onCancel}
@@ -49,7 +51,7 @@ export const FormDialog: React.FC<FormDialogProps> = ({
           </button>
         </div>
 
-        <form onSubmit={handleSubmit} className="p-6 space-y-4">
+        <form onSubmit={handleSubmit} className="p-6 space-y-4 overflow-y-auto flex-1">
           {fields.map(field => (
             <div key={field.name}>
               <label className="block text-gray-700 dark:text-gray-300 mb-2">
@@ -91,23 +93,24 @@ export const FormDialog: React.FC<FormDialogProps> = ({
               )}
             </div>
           ))}
-
-          <div className="flex gap-3 pt-4">
-            <button
-              type="button"
-              onClick={onCancel}
-              className="flex-1 px-4 py-2 border border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-300 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors"
-            >
-              Cancel
-            </button>
-            <button
-              type="submit"
-              className="flex-1 px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg transition-colors"
-            >
-              {submitLabel}
-            </button>
-          </div>
         </form>
+
+        <div className="p-6 border-t border-gray-200 dark:border-gray-700 flex gap-3 flex-shrink-0">
+          <button
+            type="button"
+            onClick={onCancel}
+            className="flex-1 px-4 py-2 border border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-300 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors"
+          >
+            Cancel
+          </button>
+          <button
+            type="submit"
+            onClick={handleSubmit}
+            className="flex-1 px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg transition-colors"
+          >
+            {submitLabel}
+          </button>
+        </div>
       </div>
     </div>
   );
