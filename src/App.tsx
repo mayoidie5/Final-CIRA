@@ -314,9 +314,9 @@ const AppContent: React.FC = () => {
       case 'tickets':
         return <TicketList view="all" selectedTicketId={selectedTicketId} />;
       case 'my-tickets':
-        return <TicketList view="my-tickets" selectedTicketId={selectedTicketId} onViewChange={(v) => setCurrentPage(v)} />;
+        return <TicketList view="my-tickets" selectedTicketId={selectedTicketId} />;
       case 'review':
-        return <TicketList view="review" selectedTicketId={selectedTicketId} onViewChange={(v) => setCurrentPage(v)} />;
+        return <TicketList view="review" selectedTicketId={selectedTicketId} />;
       case 'users':
         return <UserManagement />;
       case 'form-editor':

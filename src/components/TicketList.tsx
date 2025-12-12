@@ -10,10 +10,9 @@ import { TicketDetails } from './TicketDetails';
 interface TicketListProps {
   view?: 'my-tickets' | 'review' | 'all';
   selectedTicketId?: string | null;
-  onViewChange?: (view: 'my-tickets' | 'review') => void;
 }
 
-export const TicketList: React.FC<TicketListProps> = ({ view = 'all', selectedTicketId, onViewChange }) => {
+export const TicketList: React.FC<TicketListProps> = ({ view = 'all', selectedTicketId }) => {
   const { user } = useAuth();
   const { tickets } = useTickets();
   const [searchTerm, setSearchTerm] = useState('');
@@ -168,38 +167,6 @@ export const TicketList: React.FC<TicketListProps> = ({ view = 'all', selectedTi
       <div className="bg-white dark:bg-gray-800 rounded-lg shadow border border-gray-200 dark:border-gray-700">
         <div className="p-4 sm:p-6 border-b border-gray-200 dark:border-gray-700">
           <h2 className="text-gray-800 dark:text-white mb-4">{getTitle()}</h2>
-
-          {/* Tabs for Class Representatives */}
-          {user?.role === 'class_rep' && !user?.isPending && (
-            <div className="flex gap-2 mb-4 border-b border-gray-200 dark:border-gray-700">
-              <button
-                onClick={() => {
-                  setSelectedTicket(null);
-                  onViewChange?.('my-tickets');
-                }}
-                className={`px-4 py-2 font-medium text-sm transition-colors ${
-                  view === 'my-tickets'
-                    ? 'border-b-2 border-blue-500 text-blue-600 dark:text-blue-400'
-                    : 'border-b-2 border-transparent text-gray-600 dark:text-gray-400 hover:text-gray-800 dark:hover:text-gray-300'
-                }`}
-              >
-                My Tickets
-              </button>
-              <button
-                onClick={() => {
-                  setSelectedTicket(null);
-                  onViewChange?.('review');
-                }}
-                className={`px-4 py-2 font-medium text-sm transition-colors ${
-                  view === 'review'
-                    ? 'border-b-2 border-blue-500 text-blue-600 dark:text-blue-400'
-                    : 'border-b-2 border-transparent text-gray-600 dark:text-gray-400 hover:text-gray-800 dark:hover:text-gray-300'
-                }`}
-              >
-                Review Tickets
-              </button>
-            </div>
-          )}
 
           {/* Pending Class Rep Banner */}
           {isPendingClassRep && (
