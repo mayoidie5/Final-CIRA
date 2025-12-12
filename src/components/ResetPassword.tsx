@@ -264,6 +264,16 @@ export const ResetPassword: React.FC<ResetPasswordProps> = ({ oobCode }) => {
                     </div>
                   </div>
 
+                  {/* Change Password Button */}
+                  <div>
+                    <a
+                      href="/settings"
+                      className="inline-block px-4 py-2 text-blue-600 dark:text-blue-400 hover:text-blue-700 dark:hover:text-blue-300 text-sm font-medium transition-colors"
+                    >
+                      Change Password
+                    </a>
+                  </div>
+
                   {/* Password Requirements */}
                   {newPassword && !allRequirementsMet && (
                     <div className="bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-800 rounded-lg p-4">
@@ -353,14 +363,8 @@ export const ResetPassword: React.FC<ResetPasswordProps> = ({ oobCode }) => {
           <hr className="my-8 border-gray-300 dark:border-gray-600" />
 
           {/* Section 3: Footer */}
-          <div className="text-center space-y-4">
+          <div className="text-center">
             <p className="text-gray-500 dark:text-gray-400 text-sm">College of Engineering Information Technology</p>
-            <a
-              href="/settings"
-              className="inline-block px-4 py-2 text-blue-600 dark:text-blue-400 hover:text-blue-700 dark:hover:text-blue-300 text-sm font-medium transition-colors"
-            >
-              Change Password
-            </a>
           </div>
         </div>
       </div>
