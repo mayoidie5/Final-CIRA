@@ -1,5 +1,5 @@
-import React, { useState } from 'react';
-import { AlertCircle, Moon, Sun, CheckCircle } from 'lucide-react';
+import React, { useState, useMemo } from 'react';
+import { AlertCircle, Moon, Sun, CheckCircle, Eye, EyeOff } from 'lucide-react';
 import { useAuth } from '../contexts/AuthContext';
 import { useTheme } from '../contexts/ThemeContext';
 
@@ -34,7 +34,11 @@ export const ForgotPassword: React.FC<ForgotPasswordProps> = ({ onBackToLogin })
       setEmail('');
       // Go back to login after 3 seconds
       setTimeout(() => {
-        window.location.href = window.location.origin + '/?page=signin';
+        if (onBackToLogin) {
+          onBackToLogin();
+        } else {
+          window.location.href = window.location.origin;
+        }
       }, 3000);
     } else {
       setError(result.error || 'Failed to send reset link');
@@ -88,7 +92,7 @@ export const ForgotPassword: React.FC<ForgotPasswordProps> = ({ onBackToLogin })
           {/* Horizontal Line */}
           <hr className="my-8 border-gray-300 dark:border-gray-600" />
 
-          {/* Section 2: Reset Password Form */}
+          {/* Section 2: Form */}
           <div className="mb-8 pb-8">
             {success ? (
               <div className="text-center">
@@ -97,7 +101,7 @@ export const ForgotPassword: React.FC<ForgotPasswordProps> = ({ onBackToLogin })
                 </div>
                 <h2 className="text-xl font-semibold text-gray-900 dark:text-white mb-2">Reset Link Sent!</h2>
                 <p className="text-gray-600 dark:text-gray-400 mb-4">
-                  Check your email for the password reset link. This window will close in a few seconds.
+                  Check your email for the password reset link. This page will close in a few seconds.
                 </p>
               </div>
             ) : (
@@ -146,7 +150,13 @@ export const ForgotPassword: React.FC<ForgotPasswordProps> = ({ onBackToLogin })
                   <p className="text-gray-600 dark:text-gray-400">
                     Remember your password?{' '}
                     <button
-                      onClick={() => window.location.href = window.location.origin + '/?page=signin'}
+                      onClick={() => {
+                        if (onBackToLogin) {
+                          onBackToLogin();
+                        } else {
+                          window.location.href = window.location.origin;
+                        }
+                      }}
                       className="text-blue-600 dark:text-blue-400 hover:underline"
                     >
                       Back to Sign In

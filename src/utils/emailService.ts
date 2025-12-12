@@ -1,7 +1,35 @@
 import { auth, db } from '../config/firebase';
 import { doc, updateDoc } from 'firebase/firestore';
-import { sendEmailVerification, ActionCodeSettings } from 'firebase/auth';
+import { sendEmailVerification, ActionCodeSettings, sendPasswordResetEmail } from 'firebase/auth';
 
+// ============================================
+// FIREBASE ACTION URL CONFIGURATION
+// ============================================
+// Customize these URLs based on your deployment environment
+// These URLs are used in Firebase verification and password reset emails
+
+const getAppUrl = (): string => {
+  if (typeof window === 'undefined') {
+    return 'https://cira-six.vercel.app';
+  }
+  return window.location.origin;
+};
+
+// Configuration for action code URLs
+export const firebaseActionUrls = {
+  // Email verification: User clicks link in email → redirected to this URL
+  emailVerification: (appUrl: string) => `${appUrl}/?verifying=true`,
+  
+  // Password reset: User clicks link in email → redirected to this URL with oobCode
+  passwordReset: (appUrl: string) => `${appUrl}/reset-password`,
+  
+  // Email change confirmation: User clicks link in email → redirected to this URL
+  emailChange: (appUrl: string) => `${appUrl}/?verifying=true`,
+};
+
+// ============================================
+// EMAIL VERIFICATION
+// ============================================
 export const sendVerificationEmail = async (email: string) => {
   try {
     console.log('📧 Attempting to send verification email to:', email);
@@ -13,9 +41,9 @@ export const sendVerificationEmail = async (email: string) => {
       throw new Error('No authenticated user found');
     }
 
-    // Get the app URL - use window.location.origin for correct domain
-    const appUrl = typeof window !== 'undefined' ? window.location.origin : 'https://cira-six.vercel.app';
-    const continueUrl = `${appUrl}/?verifying=true`;
+    // Get the app URL
+    const appUrl = getAppUrl();
+    const continueUrl = firebaseActionUrls.emailVerification(appUrl);
     
     console.log('🔗 Continue URL:', continueUrl);
     console.log('📍 Origin:', appUrl);
@@ -35,6 +63,45 @@ export const sendVerificationEmail = async (email: string) => {
     console.error('❌ Error sending verification email:', error);
     
     // Provide helpful error messages
+    if (error.code === 'auth/unauthorized-continue-uri') {
+      console.error('   ⚠️ ERROR: Domain not allowlisted in Firebase Console');
+      console.error('   👉 Go to Firebase Console → Authentication → Settings');
+      console.error('   👉 Add the continue URL to "Authorized domains"');
+      console.error('   👉 Current domain:', typeof window !== 'undefined' ? window.location.origin : 'unknown');
+    }
+    
+    throw error;
+  }
+};
+
+// ============================================
+// PASSWORD RESET WITH CUSTOM ACTION URL
+// ============================================
+export const sendPasswordResetEmailWithCustomUrl = async (email: string) => {
+  try {
+    console.log('📧 Attempting to send password reset email to:', email);
+    
+    // Get the app URL
+    const appUrl = getAppUrl();
+    const continueUrl = firebaseActionUrls.passwordReset(appUrl);
+    
+    console.log('🔗 Password Reset Continue URL:', continueUrl);
+    console.log('📍 Origin:', appUrl);
+    
+    // Configure action code settings for password reset email
+    const actionCodeSettings: ActionCodeSettings = {
+      url: continueUrl, // Continue URL for password reset - MUST be allowlisted in Firebase Console
+      handleCodeInApp: false, // Firebase handles the code in the email link
+    };
+
+    // Send Firebase password reset email with custom URL
+    await sendPasswordResetEmail(auth, email, actionCodeSettings);
+    console.log('✅ Firebase password reset email sent to:', email);
+    
+    return { success: true };
+  } catch (error: any) {
+    console.error('❌ Error sending password reset email:', error);
+    
     if (error.code === 'auth/unauthorized-continue-uri') {
       console.error('   ⚠️ ERROR: Domain not allowlisted in Firebase Console');
       console.error('   👉 Go to Firebase Console → Authentication → Settings');
