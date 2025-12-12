@@ -269,6 +269,8 @@ const AppContent: React.FC = () => {
   };
 
   const getNavItems = () => {
+    if (!user) return [];
+    
     if (user.role === 'admin') {
       return [
         { id: 'dashboard', label: 'Dashboard', icon: LayoutDashboard },
@@ -283,6 +285,14 @@ const AppContent: React.FC = () => {
         { id: 'report', label: 'Report Issue', icon: Plus },
         { id: 'my-tickets', label: 'My Tickets', icon: FileText },
         { id: 'review', label: 'Review Tickets', icon: FileText },
+        { id: 'archive', label: 'Archive', icon: ArchiveIcon },
+      ];
+    } else if (user.role === 'class_rep' && user.isPending) {
+      // Pending class_rep: same navigation as student
+      return [
+        { id: 'dashboard', label: 'Dashboard', icon: LayoutDashboard },
+        { id: 'report', label: 'Report Issue', icon: Plus },
+        { id: 'tickets', label: 'My Tickets', icon: FileText },
         { id: 'archive', label: 'Archive', icon: ArchiveIcon },
       ];
     } else {
@@ -304,9 +314,9 @@ const AppContent: React.FC = () => {
       case 'tickets':
         return <TicketList view="all" selectedTicketId={selectedTicketId} />;
       case 'my-tickets':
-        return <TicketList view="my-tickets" selectedTicketId={selectedTicketId} />;
+        return <TicketList view="my-tickets" selectedTicketId={selectedTicketId} onViewChange={(v) => setCurrentPage(v)} />;
       case 'review':
-        return <TicketList view="review" selectedTicketId={selectedTicketId} />;
+        return <TicketList view="review" selectedTicketId={selectedTicketId} onViewChange={(v) => setCurrentPage(v)} />;
       case 'users':
         return <UserManagement />;
       case 'form-editor':
