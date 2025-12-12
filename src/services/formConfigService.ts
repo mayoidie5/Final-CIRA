@@ -51,13 +51,19 @@ export const setFormConfig = async (config: FormConfig): Promise<void> => {
     const docRef = doc(db, 'formConfigs', FORM_CONFIG_DOC);
     await setDoc(docRef, config);
     
-    // Also save to localStorage for offline access
-    localStorage.setItem('formConfig', JSON.stringify(config));
-    
-    console.log('✅ Form configuration saved');
+    console.log('✅ Form configuration saved to Firestore');
   } catch (error) {
-    console.error('❌ Error saving form config:', error);
-    throw error;
+    console.error('⚠️ Error saving form config to Firestore:', error);
+    // Don't throw - we'll save to localStorage as fallback
+  }
+  
+  // Always save to localStorage for offline access
+  try {
+    localStorage.setItem('formConfig', JSON.stringify(config));
+    console.log('✅ Form configuration saved to localStorage');
+  } catch (error) {
+    console.error('❌ Error saving to localStorage:', error);
+    throw error; // Only throw if both Firestore and localStorage fail
   }
 };
 

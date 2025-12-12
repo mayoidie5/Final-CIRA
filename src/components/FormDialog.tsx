@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { X } from 'lucide-react';
 
 interface Field {
@@ -16,6 +16,7 @@ interface FormDialogProps {
   onSubmit: (data: Record<string, any>) => void;
   onCancel: () => void;
   submitLabel?: string;
+  initialData?: Record<string, any>;
 }
 
 export const FormDialog: React.FC<FormDialogProps> = ({
@@ -24,8 +25,14 @@ export const FormDialog: React.FC<FormDialogProps> = ({
   onSubmit,
   onCancel,
   submitLabel = 'Submit',
+  initialData = {},
 }) => {
-  const [formData, setFormData] = useState<Record<string, any>>({});
+  const [formData, setFormData] = useState<Record<string, any>>(initialData);
+
+  // Update formData when initialData changes
+  useEffect(() => {
+    setFormData(initialData || {});
+  }, [initialData]);
 
   const handleChange = (name: string, value: any) => {
     setFormData(prev => ({ ...prev, [name]: value }));
@@ -38,8 +45,8 @@ export const FormDialog: React.FC<FormDialogProps> = ({
 
   return (
     <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
-      <div className="bg-white dark:bg-gray-800 rounded-lg shadow-xl max-w-md w-full">
-        <div className="p-6 border-b border-gray-200 dark:border-gray-700 flex items-center justify-between">
+      <div className="bg-white dark:bg-gray-800 rounded-lg shadow-xl max-w-md w-full max-h-[90vh] flex flex-col">
+        <div className="p-6 border-b border-gray-200 dark:border-gray-700 flex items-center justify-between flex-shrink-0">
           <h3 className="text-gray-800 dark:text-white">{title}</h3>
           <button
             onClick={onCancel}
@@ -49,50 +56,52 @@ export const FormDialog: React.FC<FormDialogProps> = ({
           </button>
         </div>
 
-        <form onSubmit={handleSubmit} className="p-6 space-y-4">
-          {fields.map(field => (
-            <div key={field.name}>
-              <label className="block text-gray-700 dark:text-gray-300 mb-2">
-                {field.label}
-                {field.required && <span className="text-red-500 ml-1">*</span>}
-              </label>
-              {field.type === 'textarea' ? (
-                <textarea
-                  value={formData[field.name] || ''}
-                  onChange={e => handleChange(field.name, e.target.value)}
-                  placeholder={field.placeholder}
-                  required={field.required}
-                  rows={4}
-                  className="w-full px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 dark:bg-gray-700 dark:text-white"
-                />
-              ) : field.type === 'select' ? (
-                <select
-                  value={formData[field.name] || ''}
-                  onChange={e => handleChange(field.name, e.target.value)}
-                  required={field.required}
-                  className="w-full px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 dark:bg-gray-700 dark:text-white"
-                >
-                  <option value="">Select {field.label}</option>
-                  {field.options?.map(option => (
-                    <option key={option} value={option}>
-                      {option}
-                    </option>
-                  ))}
-                </select>
-              ) : (
-                <input
-                  type={field.type}
-                  value={formData[field.name] || ''}
-                  onChange={e => handleChange(field.name, e.target.value)}
-                  placeholder={field.placeholder}
-                  required={field.required}
-                  className="w-full px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 dark:bg-gray-700 dark:text-white"
-                />
-              )}
-            </div>
-          ))}
+        <form onSubmit={handleSubmit} className="p-6 space-y-4 overflow-y-auto flex-1 flex flex-col">
+          <div className="flex-1 space-y-4">
+            {fields.map(field => (
+              <div key={field.name}>
+                <label className="block text-gray-700 dark:text-gray-300 mb-2">
+                  {field.label}
+                  {field.required && <span className="text-red-500 ml-1">*</span>}
+                </label>
+                {field.type === 'textarea' ? (
+                  <textarea
+                    value={formData[field.name] || ''}
+                    onChange={e => handleChange(field.name, e.target.value)}
+                    placeholder={field.placeholder}
+                    required={field.required}
+                    rows={4}
+                    className="w-full px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 dark:bg-gray-700 dark:text-white"
+                  />
+                ) : field.type === 'select' ? (
+                  <select
+                    value={formData[field.name] || ''}
+                    onChange={e => handleChange(field.name, e.target.value)}
+                    required={field.required}
+                    className="w-full px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 dark:bg-gray-700 dark:text-white"
+                  >
+                    <option value="">Select {field.label}</option>
+                    {field.options?.map(option => (
+                      <option key={option} value={option}>
+                        {option}
+                      </option>
+                    ))}
+                  </select>
+                ) : (
+                  <input
+                    type={field.type}
+                    value={formData[field.name] || ''}
+                    onChange={e => handleChange(field.name, e.target.value)}
+                    placeholder={field.placeholder}
+                    required={field.required}
+                    className="w-full px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 dark:bg-gray-700 dark:text-white"
+                  />
+                )}
+              </div>
+            ))}
+          </div>
 
-          <div className="flex gap-3 pt-4">
+          <div className="border-t border-gray-200 dark:border-gray-700 flex gap-3 pt-4">
             <button
               type="button"
               onClick={onCancel}

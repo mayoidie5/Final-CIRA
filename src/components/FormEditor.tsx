@@ -1,12 +1,12 @@
 import React, { useState, useEffect } from 'react';
-import { Plus, X, Save, Edit2, Trash2, GripVertical, ChevronUp, ChevronDown, Eye, EyeOff } from 'lucide-react';
+import { Plus, X, Save, Edit2, Trash2, GripVertical, ChevronUp, ChevronDown, Eye, EyeOff, AlertCircle } from 'lucide-react';
 import { FormConfig } from '../types';
 import { getFormConfig, setFormConfig as saveFormConfig } from '../services/formConfigService';
 import { DEFAULT_FORM_CONFIG } from '../utils/defaultFormConfig';
 import { FormDialog } from './FormDialog';
 import { ConfirmDialog } from './ConfirmDialog';
 import { SuccessToast } from './SuccessToast';
-import { Tabs, TabsList, TabsTrigger, TabsContent } from './ui/tabs';
+import { Tabs, TabsList, TabsTrigger, TabsContent, TabsStyles } from './ui/tabs';
 
 export const FormEditor: React.FC = () => {
   const [formConfig, setFormConfig] = useState<FormConfig>(DEFAULT_FORM_CONFIG);
@@ -22,6 +22,7 @@ export const FormEditor: React.FC = () => {
   const [expandedBuildings, setExpandedBuildings] = useState<Set<string>>(new Set());
   const [expandedIssueTypes, setExpandedIssueTypes] = useState<Set<number>>(new Set());
   const [showPreview, setShowPreview] = useState(false);
+  const [deleteConfirm, setDeleteConfirm] = useState<{ type: string; index?: number; parentIndices?: number[] } | null>(null);
   
   // Preview form state
   const [previewCampus, setPreviewCampus] = useState<string>('');
@@ -38,12 +39,12 @@ export const FormEditor: React.FC = () => {
         setIsLoading(true);
         const config = await getFormConfig(DEFAULT_FORM_CONFIG);
         setFormConfig(config);
-        setOriginalConfig(config);
+        setOriginalConfig(JSON.parse(JSON.stringify(config)));
       } catch (error) {
         console.error('Error loading form config:', error);
         // Use default config on error
         setFormConfig(DEFAULT_FORM_CONFIG);
-        setOriginalConfig(DEFAULT_FORM_CONFIG);
+        setOriginalConfig(JSON.parse(JSON.stringify(DEFAULT_FORM_CONFIG)));
       } finally {
         setIsLoading(false);
       }
@@ -54,8 +55,9 @@ export const FormEditor: React.FC = () => {
 
   useEffect(() => {
     // Check if config has changed from original
-    setHasChanges(JSON.stringify(formConfig) !== JSON.stringify(originalConfig));
-  }, [formConfig, originalConfig]);
+    const changed = JSON.stringify(formConfig) !== JSON.stringify(originalConfig);
+    setHasChanges(changed);
+  }, [formConfig]);
 
   const saveConfig = () => {
     setShowSaveConfirm(true);
@@ -64,7 +66,8 @@ export const FormEditor: React.FC = () => {
   const confirmSave = async () => {
     try {
       await saveFormConfig(formConfig);
-      setOriginalConfig(formConfig);
+      // Create a deep copy of formConfig to avoid reference issues
+      setOriginalConfig(JSON.parse(JSON.stringify(formConfig)));
       setHasChanges(false);
       setShowSaveConfirm(false);
       setShowSuccessToast(true);
@@ -97,93 +100,238 @@ export const FormEditor: React.FC = () => {
   };
 
   const editCampus = (index: number, data: any) => {
-    const newCampuses = [...formConfig.campuses];
-    newCampuses[index].name = data.name;
-    setFormConfig({ ...formConfig, campuses: newCampuses });
+    setFormConfig(prev => {
+      const newCampuses = [...prev.campuses];
+      newCampuses[index].name = data.name;
+      return { ...prev, campuses: newCampuses };
+    });
     setShowDialog(null);
   };
 
   const deleteCampus = (index: number) => {
-    if (confirm('Are you sure you want to delete this campus? All buildings and rooms under it will be deleted.')) {
-      const newCampuses = formConfig.campuses.filter((_, i) => i !== index);
-      setFormConfig({ ...formConfig, campuses: newCampuses });
-    }
+    setDeleteConfirm({ type: 'campus', index });
   };
 
   // Building operations
   const addBuilding = (campusIndex: number, data: any) => {
-    const newCampuses = [...formConfig.campuses];
-    newCampuses[campusIndex].buildings.push({ name: data.name, rooms: [] });
-    setFormConfig({ ...formConfig, campuses: newCampuses });
+    setFormConfig(prev => {
+      const newCampuses = prev.campuses.map((campus, idx) =>
+        idx === campusIndex
+          ? { ...campus, buildings: [...campus.buildings, { name: data.name, rooms: [] }] }
+          : campus
+      );
+      return { ...prev, campuses: newCampuses };
+    });
     setShowDialog(null);
   };
 
   const editBuilding = (campusIndex: number, buildingIndex: number, data: any) => {
-    const newCampuses = [...formConfig.campuses];
-    newCampuses[campusIndex].buildings[buildingIndex].name = data.name;
-    setFormConfig({ ...formConfig, campuses: newCampuses });
+    setFormConfig(prev => {
+      const newCampuses = prev.campuses.map((campus, idx) =>
+        idx === campusIndex
+          ? {
+              ...campus,
+              buildings: campus.buildings.map((building, bIdx) =>
+                bIdx === buildingIndex ? { ...building, name: data.name } : building
+              )
+            }
+          : campus
+      );
+      return { ...prev, campuses: newCampuses };
+    });
     setShowDialog(null);
   };
 
   const deleteBuilding = (campusIndex: number, buildingIndex: number) => {
     if (confirm('Are you sure you want to delete this building? All rooms under it will be deleted.')) {
-      const newCampuses = [...formConfig.campuses];
-      newCampuses[campusIndex].buildings = newCampuses[campusIndex].buildings.filter((_, i) => i !== buildingIndex);
-      setFormConfig({ ...formConfig, campuses: newCampuses });
+      setFormConfig(prev => {
+        const newCampuses = prev.campuses.map((campus, idx) =>
+          idx === campusIndex
+            ? {
+                ...campus,
+                buildings: campus.buildings.filter((_, bIdx) => bIdx !== buildingIndex)
+              }
+            : campus
+        );
+        return { ...prev, campuses: newCampuses };
+      });
     }
   };
 
   // Room operations
   const addRoom = (campusIndex: number, buildingIndex: number, data: any) => {
-    const newCampuses = [...formConfig.campuses];
-    newCampuses[campusIndex].buildings[buildingIndex].rooms.push({ name: data.name, unitIds: [] });
-    setFormConfig({ ...formConfig, campuses: newCampuses });
+    setFormConfig(prev => {
+      const newCampuses = prev.campuses.map((campus, cIdx) =>
+        cIdx === campusIndex
+          ? {
+              ...campus,
+              buildings: campus.buildings.map((building, bIdx) =>
+                bIdx === buildingIndex
+                  ? { ...building, rooms: [...building.rooms, { name: data.name, unitIds: [] }] }
+                  : building
+              )
+            }
+          : campus
+      );
+      return { ...prev, campuses: newCampuses };
+    });
     setShowDialog(null);
   };
 
   const editRoom = (campusIndex: number, buildingIndex: number, roomIndex: number, data: any) => {
-    const newCampuses = [...formConfig.campuses];
-    newCampuses[campusIndex].buildings[buildingIndex].rooms[roomIndex].name = data.name;
-    setFormConfig({ ...formConfig, campuses: newCampuses });
+    setFormConfig(prev => {
+      const newCampuses = prev.campuses.map((campus, cIdx) =>
+        cIdx === campusIndex
+          ? {
+              ...campus,
+              buildings: campus.buildings.map((building, bIdx) =>
+                bIdx === buildingIndex
+                  ? {
+                      ...building,
+                      rooms: building.rooms.map((room, rIdx) =>
+                        rIdx === roomIndex ? { ...room, name: data.name } : room
+                      )
+                    }
+                  : building
+              )
+            }
+          : campus
+      );
+      return { ...prev, campuses: newCampuses };
+    });
     setShowDialog(null);
   };
 
   const deleteRoom = (campusIndex: number, buildingIndex: number, roomIndex: number) => {
     if (confirm('Are you sure you want to delete this room?')) {
-      const newCampuses = [...formConfig.campuses];
-      newCampuses[campusIndex].buildings[buildingIndex].rooms = 
-        newCampuses[campusIndex].buildings[buildingIndex].rooms.filter((_, i) => i !== roomIndex);
-      setFormConfig({ ...formConfig, campuses: newCampuses });
+      setFormConfig(prev => {
+        const newCampuses = prev.campuses.map((campus, cIdx) =>
+          cIdx === campusIndex
+            ? {
+                ...campus,
+                buildings: campus.buildings.map((building, bIdx) =>
+                  bIdx === buildingIndex
+                    ? { ...building, rooms: building.rooms.filter((_, rIdx) => rIdx !== roomIndex) }
+                    : building
+                )
+              }
+            : campus
+        );
+        return { ...prev, campuses: newCampuses };
+      });
     }
   };
 
   // Unit ID operations
   const addUnitId = (campusIndex: number, buildingIndex: number, roomIndex: number, data: any) => {
-    const newCampuses = [...formConfig.campuses];
-    newCampuses[campusIndex].buildings[buildingIndex].rooms[roomIndex].unitIds.push(data.unitId);
-    setFormConfig({ ...formConfig, campuses: newCampuses });
+    setFormConfig(prev => {
+      const newCampuses = prev.campuses.map((campus, cIdx) =>
+        cIdx === campusIndex
+          ? {
+              ...campus,
+              buildings: campus.buildings.map((building, bIdx) =>
+                bIdx === buildingIndex
+                  ? {
+                      ...building,
+                      rooms: building.rooms.map((room, rIdx) =>
+                        rIdx === roomIndex
+                          ? { ...room, unitIds: [...room.unitIds, data.unitId] }
+                          : room
+                      )
+                    }
+                  : building
+              )
+            }
+          : campus
+      );
+      return { ...prev, campuses: newCampuses };
+    });
     setShowDialog(null);
   };
 
   const editUnitId = (campusIndex: number, buildingIndex: number, roomIndex: number, unitIdIndex: number, data: any) => {
-    const newCampuses = [...formConfig.campuses];
-    newCampuses[campusIndex].buildings[buildingIndex].rooms[roomIndex].unitIds[unitIdIndex] = data.unitId;
-    setFormConfig({ ...formConfig, campuses: newCampuses });
+    setFormConfig(prev => {
+      const newCampuses = prev.campuses.map((campus, cIdx) =>
+        cIdx === campusIndex
+          ? {
+              ...campus,
+              buildings: campus.buildings.map((building, bIdx) =>
+                bIdx === buildingIndex
+                  ? {
+                      ...building,
+                      rooms: building.rooms.map((room, rIdx) =>
+                        rIdx === roomIndex
+                          ? {
+                              ...room,
+                              unitIds: room.unitIds.map((id, uIdx) =>
+                                uIdx === unitIdIndex ? data.unitId : id
+                              )
+                            }
+                          : room
+                      )
+                    }
+                  : building
+              )
+            }
+          : campus
+      );
+      return { ...prev, campuses: newCampuses };
+    });
     setShowDialog(null);
   };
 
   const deleteUnitId = (campusIndex: number, buildingIndex: number, roomIndex: number, unitIdIndex: number) => {
-    const newCampuses = [...formConfig.campuses];
-    newCampuses[campusIndex].buildings[buildingIndex].rooms[roomIndex].unitIds.splice(unitIdIndex, 1);
-    setFormConfig({ ...formConfig, campuses: newCampuses });
+    setFormConfig(prev => {
+      const newCampuses = prev.campuses.map((campus, cIdx) =>
+        cIdx === campusIndex
+          ? {
+              ...campus,
+              buildings: campus.buildings.map((building, bIdx) =>
+                bIdx === buildingIndex
+                  ? {
+                      ...building,
+                      rooms: building.rooms.map((room, rIdx) =>
+                        rIdx === roomIndex
+                          ? { ...room, unitIds: room.unitIds.filter((_, uIdx) => uIdx !== unitIdIndex) }
+                          : room
+                      )
+                    }
+                  : building
+              )
+            }
+          : campus
+      );
+      return { ...prev, campuses: newCampuses };
+    });
   };
 
   const moveUnitId = (campusIndex: number, buildingIndex: number, roomIndex: number, fromIndex: number, toIndex: number) => {
-    const newCampuses = [...formConfig.campuses];
-    const unitIds = newCampuses[campusIndex].buildings[buildingIndex].rooms[roomIndex].unitIds;
-    const [movedItem] = unitIds.splice(fromIndex, 1);
-    unitIds.splice(toIndex, 0, movedItem);
-    setFormConfig({ ...formConfig, campuses: newCampuses });
+    setFormConfig(prev => {
+      const newCampuses = prev.campuses.map((campus, cIdx) =>
+        cIdx === campusIndex
+          ? {
+              ...campus,
+              buildings: campus.buildings.map((building, bIdx) =>
+                bIdx === buildingIndex
+                  ? {
+                      ...building,
+                      rooms: building.rooms.map((room, rIdx) => {
+                        if (rIdx === roomIndex) {
+                          const newUnitIds = [...room.unitIds];
+                          const [movedItem] = newUnitIds.splice(fromIndex, 1);
+                          newUnitIds.splice(toIndex, 0, movedItem);
+                          return { ...room, unitIds: newUnitIds };
+                        }
+                        return room;
+                      })
+                    }
+                  : building
+              )
+            }
+          : campus
+      );
+      return { ...prev, campuses: newCampuses };
+    });
   };
 
   // Issue Type operations
@@ -196,45 +344,80 @@ export const FormEditor: React.FC = () => {
   };
 
   const editIssueType = (index: number, data: any) => {
-    const newIssueTypes = [...formConfig.issueTypes];
-    newIssueTypes[index].name = data.name;
-    setFormConfig({ ...formConfig, issueTypes: newIssueTypes });
+    setFormConfig(prev => {
+      const newIssueTypes = prev.issueTypes.map((issueType, idx) =>
+        idx === index ? { ...issueType, name: data.name } : issueType
+      );
+      return { ...prev, issueTypes: newIssueTypes };
+    });
     setShowDialog(null);
   };
 
   const deleteIssueType = (index: number) => {
     if (confirm('Are you sure you want to delete this issue type?')) {
-      const newIssueTypes = formConfig.issueTypes.filter((_, i) => i !== index);
-      setFormConfig({ ...formConfig, issueTypes: newIssueTypes });
+      setFormConfig(prev => {
+        const newIssueTypes = prev.issueTypes.filter((_, i) => i !== index);
+        return { ...prev, issueTypes: newIssueTypes };
+      });
     }
   };
 
   const addSubtype = (issueTypeIndex: number, data: any) => {
-    const newIssueTypes = [...formConfig.issueTypes];
-    newIssueTypes[issueTypeIndex].subtypes.push(data.subtype);
-    setFormConfig({ ...formConfig, issueTypes: newIssueTypes });
+    setFormConfig(prev => {
+      const newIssueTypes = prev.issueTypes.map((issueType, idx) =>
+        idx === issueTypeIndex
+          ? { ...issueType, subtypes: [...issueType.subtypes, data.subtype] }
+          : issueType
+      );
+      return { ...prev, issueTypes: newIssueTypes };
+    });
     setShowDialog(null);
   };
 
   const editSubtype = (issueTypeIndex: number, subtypeIndex: number, data: any) => {
-    const newIssueTypes = [...formConfig.issueTypes];
-    newIssueTypes[issueTypeIndex].subtypes[subtypeIndex] = data.subtype;
-    setFormConfig({ ...formConfig, issueTypes: newIssueTypes });
+    setFormConfig(prev => {
+      const newIssueTypes = prev.issueTypes.map((issueType, idx) =>
+        idx === issueTypeIndex
+          ? {
+              ...issueType,
+              subtypes: issueType.subtypes.map((subtype, sIdx) =>
+                sIdx === subtypeIndex ? data.subtype : subtype
+              )
+            }
+          : issueType
+      );
+      return { ...prev, issueTypes: newIssueTypes };
+    });
     setShowDialog(null);
   };
 
   const deleteSubtype = (issueTypeIndex: number, subtypeIndex: number) => {
-    const newIssueTypes = [...formConfig.issueTypes];
-    newIssueTypes[issueTypeIndex].subtypes.splice(subtypeIndex, 1);
-    setFormConfig({ ...formConfig, issueTypes: newIssueTypes });
+    setFormConfig(prev => {
+      const newIssueTypes = prev.issueTypes.map((issueType, idx) =>
+        idx === issueTypeIndex
+          ? {
+              ...issueType,
+              subtypes: issueType.subtypes.filter((_, sIdx) => sIdx !== subtypeIndex)
+            }
+          : issueType
+      );
+      return { ...prev, issueTypes: newIssueTypes };
+    });
   };
 
   const moveSubtype = (issueTypeIndex: number, fromIndex: number, toIndex: number) => {
-    const newIssueTypes = [...formConfig.issueTypes];
-    const subtypes = newIssueTypes[issueTypeIndex].subtypes;
-    const [movedItem] = subtypes.splice(fromIndex, 1);
-    subtypes.splice(toIndex, 0, movedItem);
-    setFormConfig({ ...formConfig, issueTypes: newIssueTypes });
+    setFormConfig(prev => {
+      const newIssueTypes = prev.issueTypes.map((issueType, idx) => {
+        if (idx === issueTypeIndex) {
+          const newSubtypes = [...issueType.subtypes];
+          const [movedItem] = newSubtypes.splice(fromIndex, 1);
+          newSubtypes.splice(toIndex, 0, movedItem);
+          return { ...issueType, subtypes: newSubtypes };
+        }
+        return issueType;
+      });
+      return { ...prev, issueTypes: newIssueTypes };
+    });
   };
 
   // Drag and drop handlers
@@ -318,9 +501,22 @@ export const FormEditor: React.FC = () => {
 
   return (
     <div className="max-w-7xl mx-auto p-4 sm:p-6 space-y-4 sm:space-y-6">
+      <TabsStyles />
       <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 sm:gap-0">
         <div>
-          <h2 className="text-gray-800 dark:text-white mb-2">Form Editor</h2>
+          <div className="flex items-center gap-2">
+            <h2 className="text-gray-800 dark:text-white mb-2">Form Editor</h2>
+            {editMode && (
+              <span className="inline-block px-2 py-1 bg-blue-100 dark:bg-blue-900/30 text-blue-800 dark:text-blue-400 text-xs font-medium rounded">
+                Editing Mode
+              </span>
+            )}
+            {hasChanges && (
+              <span className="inline-block px-2 py-1 bg-yellow-100 dark:bg-yellow-900/30 text-yellow-800 dark:text-yellow-400 text-xs font-medium rounded">
+                Unsaved Changes
+              </span>
+            )}
+          </div>
           <p className="text-gray-600 dark:text-gray-400 text-sm sm:text-base">Configure form options for issue reporting</p>
         </div>
         <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2 sm:gap-3 w-full sm:w-auto">
@@ -365,17 +561,26 @@ export const FormEditor: React.FC = () => {
 
       {/* Tabbed Configuration Interface */}
       <div className={`bg-white dark:bg-gray-800 rounded-lg shadow border border-gray-200 dark:border-gray-700 ${!editMode ? 'opacity-60 pointer-events-none' : ''}`}>
+        {editMode && hasChanges && (
+          <div className="bg-yellow-50 dark:bg-yellow-900/20 border-b border-yellow-200 dark:border-yellow-800/50 p-4 flex items-start gap-3">
+            <AlertCircle className="text-yellow-600 dark:text-yellow-500 flex-shrink-0 mt-0.5" size={20} />
+            <div>
+              <p className="text-yellow-800 dark:text-yellow-300 font-medium">You have unsaved changes</p>
+              <p className="text-yellow-700 dark:text-yellow-400 text-sm">Click "Save Configuration" to apply your changes for all users</p>
+            </div>
+          </div>
+        )}
         <Tabs defaultValue="campus" className="w-full">
           <TabsList className="w-full justify-start rounded-none border-b border-gray-200 dark:border-gray-700 bg-transparent p-0 h-auto">
             <TabsTrigger 
               value="campus"
-              className="rounded-none border-b-2 border-transparent data-[state=active]:border-blue-600 data-[state=active]:bg-transparent px-4 py-3"
+              className="rounded-none border-b-2 border-transparent data-[state=active]:border-blue-600 data-[state=active]:font-semibold px-4 py-3 text-gray-600 dark:text-gray-400 hover:bg-blue-50 dark:hover:bg-gray-700 transition-colors campus-trigger"
             >
               Campus & Location
             </TabsTrigger>
             <TabsTrigger 
               value="issues"
-              className="rounded-none border-b-2 border-transparent data-[state=active]:border-blue-600 data-[state=active]:bg-transparent px-4 py-3"
+              className="rounded-none border-b-2 border-transparent data-[state=active]:border-blue-600 data-[state=active]:font-semibold px-4 py-3 text-gray-600 dark:text-gray-400 hover:bg-blue-50 dark:hover:bg-gray-700 transition-colors issue-trigger"
             >
               Issue Types
             </TabsTrigger>
@@ -900,24 +1105,30 @@ export const FormEditor: React.FC = () => {
         <>
           {showDialog.type === 'campus' && (
             <FormDialog
+              key="addCampus"
               title="Add Campus"
               fields={[{ name: 'name', label: 'Campus Name', type: 'text', required: true }]}
+              initialData={{ name: '' }}
               onSubmit={addCampus}
               onCancel={() => setShowDialog(null)}
             />
           )}
           {showDialog.type === 'editCampus' && (
             <FormDialog
+              key={`editCampus-${showDialog.data.campusIndex}`}
               title="Edit Campus"
               fields={[{ name: 'name', label: 'Campus Name', type: 'text', required: true }]}
               onSubmit={(data) => editCampus(showDialog.data.campusIndex, data)}
               onCancel={() => setShowDialog(null)}
+              initialData={{ name: showDialog.data.name }}
             />
           )}
           {showDialog.type === 'building' && (
             <FormDialog
+              key="addBuilding"
               title="Add Building"
               fields={[{ name: 'name', label: 'Building Name', type: 'text', required: true }]}
+              initialData={{ name: '' }}
               onSubmit={(data) => addBuilding(showDialog.data.campusIndex, data)}
               onCancel={() => setShowDialog(null)}
             />
@@ -928,12 +1139,15 @@ export const FormEditor: React.FC = () => {
               fields={[{ name: 'name', label: 'Building Name', type: 'text', required: true }]}
               onSubmit={(data) => editBuilding(showDialog.data.campusIndex, showDialog.data.buildingIndex, data)}
               onCancel={() => setShowDialog(null)}
+              initialData={{ name: showDialog.data.name }}
             />
           )}
           {showDialog.type === 'room' && (
             <FormDialog
+              key="addRoom"
               title="Add Room"
               fields={[{ name: 'name', label: 'Room Name', type: 'text', required: true }]}
+              initialData={{ name: '' }}
               onSubmit={(data) => addRoom(showDialog.data.campusIndex, showDialog.data.buildingIndex, data)}
               onCancel={() => setShowDialog(null)}
             />
@@ -944,12 +1158,15 @@ export const FormEditor: React.FC = () => {
               fields={[{ name: 'name', label: 'Room Name', type: 'text', required: true }]}
               onSubmit={(data) => editRoom(showDialog.data.campusIndex, showDialog.data.buildingIndex, showDialog.data.roomIndex, data)}
               onCancel={() => setShowDialog(null)}
+              initialData={{ name: showDialog.data.name }}
             />
           )}
           {showDialog.type === 'unitId' && (
             <FormDialog
+              key="addUnitId"
               title="Add Unit ID"
               fields={[{ name: 'unitId', label: 'Unit ID', type: 'text', required: true, placeholder: 'e.g., CL 201-01' }]}
+              initialData={{ unitId: '' }}
               onSubmit={(data) => addUnitId(showDialog.data.campusIndex, showDialog.data.buildingIndex, showDialog.data.roomIndex, data)}
               onCancel={() => setShowDialog(null)}
             />
@@ -960,12 +1177,15 @@ export const FormEditor: React.FC = () => {
               fields={[{ name: 'unitId', label: 'Unit ID', type: 'text', required: true }]}
               onSubmit={(data) => editUnitId(showDialog.data.campusIndex, showDialog.data.buildingIndex, showDialog.data.roomIndex, showDialog.data.unitIdIndex, data)}
               onCancel={() => setShowDialog(null)}
+              initialData={{ unitId: showDialog.data.unitId }}
             />
           )}
           {showDialog.type === 'issueType' && (
             <FormDialog
+              key="addIssueType"
               title="Add Issue Type"
               fields={[{ name: 'name', label: 'Issue Type Name', type: 'text', required: true }]}
+              initialData={{ name: '' }}
               onSubmit={addIssueType}
               onCancel={() => setShowDialog(null)}
             />
@@ -976,12 +1196,15 @@ export const FormEditor: React.FC = () => {
               fields={[{ name: 'name', label: 'Issue Type Name', type: 'text', required: true }]}
               onSubmit={(data) => editIssueType(showDialog.data.issueTypeIndex, data)}
               onCancel={() => setShowDialog(null)}
+              initialData={{ name: showDialog.data.name }}
             />
           )}
           {showDialog.type === 'subtype' && (
             <FormDialog
+              key="addSubtype"
               title="Add Subtype"
               fields={[{ name: 'subtype', label: 'Subtype', type: 'text', required: true }]}
+              initialData={{ subtype: '' }}
               onSubmit={(data) => addSubtype(showDialog.data.issueTypeIndex, data)}
               onCancel={() => setShowDialog(null)}
             />
@@ -992,6 +1215,7 @@ export const FormEditor: React.FC = () => {
               fields={[{ name: 'subtype', label: 'Subtype', type: 'text', required: true }]}
               onSubmit={(data) => editSubtype(showDialog.data.issueTypeIndex, showDialog.data.subtypeIndex, data)}
               onCancel={() => setShowDialog(null)}
+              initialData={{ subtype: showDialog.data.subtype }}
             />
           )}
         </>
@@ -1014,6 +1238,25 @@ export const FormEditor: React.FC = () => {
         <SuccessToast
           message="Form configuration saved successfully!"
           onClose={() => setShowSuccessToast(false)}
+        />
+      )}
+
+      {/* Delete Confirmation Dialog */}
+      {deleteConfirm && deleteConfirm.type === 'campus' && (
+        <ConfirmDialog
+          title="Delete Campus"
+          message={`Are you sure you want to delete this campus? All buildings and rooms under it will be deleted.`}
+          confirmText="Delete"
+          cancelText="Cancel"
+          type="danger"
+          onConfirm={() => {
+            setFormConfig(prev => {
+              const newCampuses = prev.campuses.filter((_, i) => i !== deleteConfirm.index);
+              return { ...prev, campuses: newCampuses };
+            });
+            setDeleteConfirm(null);
+          }}
+          onCancel={() => setDeleteConfirm(null)}
         />
       )}
     </div>
