@@ -89,10 +89,10 @@ export const TicketList: React.FC<TicketListProps> = ({ view = 'all', selectedTi
         // Approved class_rep - show tickets created by the class rep
         userTickets = tickets.filter(t => t.userId === user.id && t.status !== 'resolved');
       } else if (view === 'review') {
-        // Approved class_rep - show tickets created by students (not by class rep themselves)
+        // Approved class_rep - show tickets they have accepted (where acceptedBy is their ID)
         userTickets = tickets.filter(t => 
           t.userId !== user.id && 
-          (t.acceptedBy === user.id || t.status === 'submitted') && 
+          t.acceptedBy === user.id && 
           t.status !== 'resolved'
         );
       }
