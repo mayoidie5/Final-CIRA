@@ -84,7 +84,8 @@ const AppContent: React.FC = () => {
     }
     
     // Check if user came from Firebase verification (verifying=true means they just verified)
-    if (verifying === 'true') {
+    // Don't close if this is a password reset page
+    if (verifying === 'true' && pathname !== '/reset-password') {
       console.log('✅ User returned from Firebase verification');
       setVerificationSuccess(true);
       
