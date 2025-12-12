@@ -38,12 +38,12 @@ export const FormEditor: React.FC = () => {
         setIsLoading(true);
         const config = await getFormConfig(DEFAULT_FORM_CONFIG);
         setFormConfig(config);
-        setOriginalConfig(config);
+        setOriginalConfig(JSON.parse(JSON.stringify(config)));
       } catch (error) {
         console.error('Error loading form config:', error);
         // Use default config on error
         setFormConfig(DEFAULT_FORM_CONFIG);
-        setOriginalConfig(DEFAULT_FORM_CONFIG);
+        setOriginalConfig(JSON.parse(JSON.stringify(DEFAULT_FORM_CONFIG)));
       } finally {
         setIsLoading(false);
       }
@@ -56,7 +56,7 @@ export const FormEditor: React.FC = () => {
     // Check if config has changed from original
     const changed = JSON.stringify(formConfig) !== JSON.stringify(originalConfig);
     setHasChanges(changed);
-  }, [formConfig, originalConfig]);
+  }, [formConfig]);
 
   const saveConfig = () => {
     setShowSaveConfirm(true);
@@ -65,7 +65,8 @@ export const FormEditor: React.FC = () => {
   const confirmSave = async () => {
     try {
       await saveFormConfig(formConfig);
-      setOriginalConfig(formConfig);
+      // Create a deep copy of formConfig to avoid reference issues
+      setOriginalConfig(JSON.parse(JSON.stringify(formConfig)));
       setHasChanges(false);
       setShowSaveConfirm(false);
       setShowSuccessToast(true);
@@ -1116,6 +1117,7 @@ export const FormEditor: React.FC = () => {
           )}
           {showDialog.type === 'editCampus' && (
             <FormDialog
+              key={`editCampus-${showDialog.data.campusIndex}`}
               title="Edit Campus"
               fields={[{ name: 'name', label: 'Campus Name', type: 'text', required: true }]}
               onSubmit={(data) => editCampus(showDialog.data.campusIndex, data)}
