@@ -51,7 +51,7 @@ export const ResendVerificationModal: React.FC<ResendVerificationModalProps> = (
             </p>
             <button
               onClick={handleClose}
-              className="w-full px-4 py-2.5 bg-blue-600 hover:bg-blue-700 text-white font-medium rounded-lg transition-colors"
+              className="w-full px-6 py-3 bg-blue-600 hover:bg-blue-700 text-white font-medium rounded-lg transition-colors"
             >
               Got it, thanks!
             </button>
@@ -82,14 +82,14 @@ export const ResendVerificationModal: React.FC<ResendVerificationModalProps> = (
               <button
                 onClick={handleResend}
                 disabled={loading}
-                className="w-full px-4 py-2.5 bg-blue-600 hover:bg-blue-700 disabled:bg-gray-400 disabled:cursor-not-allowed text-white font-medium rounded-lg transition-colors flex items-center justify-center gap-2"
+                className="w-full px-6 py-3 bg-blue-600 hover:bg-blue-700 disabled:bg-gray-400 disabled:cursor-not-allowed text-white font-medium rounded-lg transition-colors flex items-center justify-center gap-2"
               >
                 {loading && <Loader size={18} className="animate-spin" />}
                 {loading ? 'Sending...' : 'Send Verification Email'}
               </button>
               <button
                 onClick={handleClose}
-                className="w-full px-4 py-2.5 bg-gray-200 dark:bg-gray-700 hover:bg-gray-300 dark:hover:bg-gray-600 text-gray-900 dark:text-white font-medium rounded-lg transition-colors"
+                className="w-full px-6 py-3 bg-gray-200 dark:bg-gray-700 hover:bg-gray-300 dark:hover:bg-gray-600 text-gray-900 dark:text-white font-medium rounded-lg transition-colors"
               >
                 Cancel
               </button>

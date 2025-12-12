@@ -139,7 +139,7 @@ export const SignIn: React.FC<SignInProps> = ({ onSwitchToSignUp, onSwitchToForg
                       </p>
                       <button
                         onClick={handleBackToLogin}
-                        className="w-full px-4 py-2.5 bg-blue-600 hover:bg-blue-700 text-white font-medium rounded-lg transition-colors"
+                        className="w-full px-6 py-3 bg-blue-600 hover:bg-blue-700 text-white font-medium rounded-lg transition-colors"
                       >
                         Back to Login
                       </button>
