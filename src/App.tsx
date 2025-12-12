@@ -60,10 +60,26 @@ const AppContent: React.FC = () => {
     
     // Handle email verification code from email link
     // Email verification is handled automatically by AuthContext
-    // AuthContext will apply the code and close the tab
+    // Wait for AuthContext to process it and set the success flag
     if (mode === 'verifyEmail' && oobCode) {
-      console.log('📧 Detected email verification link - AuthContext will handle');
-      // AuthContext's handleVerificationLink effect runs in parallel and handles everything
+      console.log('📧 Detected email verification link - waiting for AuthContext');
+      // AuthContext's handleVerificationLink effect runs in parallel
+      // It will set the showVerificationSuccess flag when done
+      // Check for the flag periodically
+      const checkFlag = setInterval(() => {
+        const success = localStorage.getItem('showVerificationSuccess');
+        if (success === 'true') {
+          localStorage.removeItem('showVerificationSuccess');
+          setVerificationSuccess(true);
+          clearInterval(checkFlag);
+        }
+      }, 100);
+      
+      // Clear interval after 5 seconds if flag is not set
+      setTimeout(() => {
+        clearInterval(checkFlag);
+      }, 5000);
+      
       return;
     }
     
@@ -93,8 +109,8 @@ const AppContent: React.FC = () => {
       } else if (pathname === '/forgot-password') {
         setAuthView('forgot-password');
         return;
-      } else if (pathname === '/auth/action') {
-        // Don't navigate away from auth action page (handles both email verification and password reset)
+      } else if (pathname === '/auth/action' || pathname === '/resend-email-verification') {
+        // Don't navigate away from auth action pages (handles both email verification and password reset)
         return;
       } else if (pathname === '/reset-password') {
         // Don't navigate away from reset-password page

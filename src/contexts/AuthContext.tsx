@@ -73,8 +73,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
               // Set flag so App.tsx can show success screen
               localStorage.setItem('showVerificationSuccess', 'true');
               
-              // Show success message before closing
-              console.log('🎉 Email verification complete! Closing tab in 2 seconds...');
+              console.log('🎉 Email verification complete! App will show success screen...');
               
               // Notify any other tabs that verification is complete
               localStorage.setItem('verificationComplete', JSON.stringify({
@@ -82,7 +81,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
                 verified: true
               }));
               
-              // Wait 2 seconds to show the success message, then close the tab
+              // Close tab after user sees the success message (handled by App.tsx)
               setTimeout(() => {
                 window.close();
               }, 2000);
