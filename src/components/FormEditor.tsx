@@ -427,26 +427,108 @@ export const FormEditor: React.FC = () => {
 
   const handleDragOver = (e: React.DragEvent) => {
     e.preventDefault();
+    e.stopPropagation();
+  };
+
+  const handleDragEnd = (e: React.DragEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
   };
 
   const handleDrop = (type: string, dropIndex: number, parentIndices?: number[]) => {
-    if (!draggedItem || draggedItem.type !== type) return;
+    if (!draggedItem) return;
+    if (draggedItem.type !== type) {
+      setDraggedItem(null);
+      return;
+    }
+    if (draggedItem.index === dropIndex) {
+      setDraggedItem(null);
+      return;
+    }
 
     if (type === 'campus') {
       const newCampuses = [...formConfig.campuses];
       const [movedItem] = newCampuses.splice(draggedItem.index, 1);
       newCampuses.splice(dropIndex, 0, movedItem);
       setFormConfig({ ...formConfig, campuses: newCampuses });
+    } else if (type === 'building') {
+      if (!parentIndices || !draggedItem.parentIndices) {
+        setDraggedItem(null);
+        return;
+      }
+      const campusIndex = parentIndices[0];
+      if (draggedItem.parentIndices[0] !== campusIndex) {
+        setDraggedItem(null);
+        return;
+      }
+      setFormConfig(prev => {
+        const newCampuses = prev.campuses.map((campus, idx) => {
+          if (idx === campusIndex) {
+            const newBuildings = [...campus.buildings];
+            const [movedItem] = newBuildings.splice(draggedItem.index, 1);
+            newBuildings.splice(dropIndex, 0, movedItem);
+            return { ...campus, buildings: newBuildings };
+          }
+          return campus;
+        });
+        return { ...prev, campuses: newCampuses };
+      });
+    } else if (type === 'room') {
+      if (!parentIndices || !draggedItem.parentIndices) {
+        setDraggedItem(null);
+        return;
+      }
+      const [campusIndex, buildingIndex] = parentIndices;
+      if (draggedItem.parentIndices[0] !== campusIndex || draggedItem.parentIndices[1] !== buildingIndex) {
+        setDraggedItem(null);
+        return;
+      }
+      setFormConfig(prev => {
+        const newCampuses = prev.campuses.map((campus, cIdx) => {
+          if (cIdx === campusIndex) {
+            return {
+              ...campus,
+              buildings: campus.buildings.map((building, bIdx) => {
+                if (bIdx === buildingIndex) {
+                  const newRooms = [...building.rooms];
+                  const [movedItem] = newRooms.splice(draggedItem.index, 1);
+                  newRooms.splice(dropIndex, 0, movedItem);
+                  return { ...building, rooms: newRooms };
+                }
+                return building;
+              })
+            };
+          }
+          return campus;
+        });
+        return { ...prev, campuses: newCampuses };
+      });
     } else if (type === 'issueType') {
       const newIssueTypes = [...formConfig.issueTypes];
       const [movedItem] = newIssueTypes.splice(draggedItem.index, 1);
       newIssueTypes.splice(dropIndex, 0, movedItem);
       setFormConfig({ ...formConfig, issueTypes: newIssueTypes });
-    } else if (type === 'subtype' && parentIndices && draggedItem.parentIndices) {
+    } else if (type === 'subtype') {
+      if (!parentIndices || !draggedItem.parentIndices) {
+        setDraggedItem(null);
+        return;
+      }
       const [issueTypeIndex] = parentIndices;
+      if (draggedItem.parentIndices[0] !== issueTypeIndex) {
+        setDraggedItem(null);
+        return;
+      }
       moveSubtype(issueTypeIndex, draggedItem.index, dropIndex);
-    } else if (type === 'unitId' && parentIndices && draggedItem.parentIndices) {
+    } else if (type === 'unitId') {
+      if (!parentIndices || !draggedItem.parentIndices) {
+        setDraggedItem(null);
+        return;
+      }
       const [campusIndex, buildingIndex, roomIndex] = parentIndices;
+      if (draggedItem.parentIndices[0] !== campusIndex || draggedItem.parentIndices[1] !== buildingIndex || draggedItem.parentIndices[2] !== roomIndex) {
+        setDraggedItem(null);
+        return;
+      }
       moveUnitId(campusIndex, buildingIndex, roomIndex, draggedItem.index, dropIndex);
     }
 
@@ -605,9 +687,16 @@ export const FormEditor: React.FC = () => {
             <div 
               key={campusIndex} 
               draggable
-              onDragStart={() => handleDragStart('campus', campusIndex)}
+              onDragStart={(e) => {
+                e.stopPropagation();
+                handleDragStart('campus', campusIndex);
+              }}
               onDragOver={handleDragOver}
-              onDrop={() => handleDrop('campus', campusIndex)}
+              onDrop={(e) => {
+                e.stopPropagation();
+                handleDrop('campus', campusIndex);
+              }}
+              onDragEnd={handleDragEnd}
               className="border border-gray-200 dark:border-gray-700 rounded-lg p-3 sm:p-4 cursor-move hover:border-blue-400 dark:hover:border-blue-600 transition-colors"
             >
               <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 mb-4">
@@ -651,12 +740,31 @@ export const FormEditor: React.FC = () => {
               {isCampusExpanded(campusIndex) && (
                 <div className="space-y-4 ml-0 sm:ml-6">
                   {campus.buildings.map((building, buildingIndex) => (
-                  <div key={buildingIndex} className="border border-gray-200 dark:border-gray-700 rounded-lg p-3 sm:p-4 bg-gray-50 dark:bg-gray-900">
+                  <div 
+                    key={buildingIndex} 
+                    draggable
+                    onDragStart={(e) => {
+                      e.stopPropagation();
+                      handleDragStart('building', buildingIndex, [campusIndex]);
+                    }}
+                    onDragOver={handleDragOver}
+                    onDrop={(e) => {
+                      e.stopPropagation();
+                      handleDrop('building', buildingIndex, [campusIndex]);
+                    }}
+                    onDragEnd={handleDragEnd}
+                    className="border border-gray-200 dark:border-gray-700 rounded-lg p-3 sm:p-4 bg-gray-50 dark:bg-gray-900 cursor-move hover:border-blue-400 dark:hover:border-blue-600 transition-colors"
+                  >
                     <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 mb-4">
                       <div 
-                        className="flex items-center gap-2 cursor-pointer flex-1 hover:opacity-70 transition-opacity"
+                        className="flex items-center gap-2 cursor-move flex-1 hover:opacity-70 transition-opacity"
                         onClick={() => toggleBuildingExpanded(campusIndex, buildingIndex)}
+                        draggable
+                        onDragStart={() => handleDragStart('building', buildingIndex, [campusIndex])}
                       >
+                        <div className="flex-shrink-0 p-1 hover:bg-gray-300 dark:hover:bg-gray-600 rounded transition-colors">
+                          <GripVertical className="text-gray-500 dark:text-gray-400" size={20} />
+                        </div>
                         {isBuildingExpanded(campusIndex, buildingIndex) ? (
                           <ChevronDown className="text-gray-600 dark:text-gray-400" size={18} />
                         ) : (
@@ -695,9 +803,26 @@ export const FormEditor: React.FC = () => {
                     {isBuildingExpanded(campusIndex, buildingIndex) && (
                       <div className="space-y-3 ml-0 sm:ml-6">
                       {building.rooms.map((room, roomIndex) => (
-                        <div key={roomIndex} className="border border-gray-200 dark:border-gray-700 rounded-lg p-3 bg-white dark:bg-gray-800">
+                        <div 
+                          key={roomIndex} 
+                          draggable
+                          onDragStart={(e) => {
+                            e.stopPropagation();
+                            handleDragStart('room', roomIndex, [campusIndex, buildingIndex]);
+                          }}
+                          onDragOver={handleDragOver}
+                          onDrop={(e) => {
+                            e.stopPropagation();
+                            handleDrop('room', roomIndex, [campusIndex, buildingIndex]);
+                          }}
+                          onDragEnd={handleDragEnd}
+                          className="border border-gray-200 dark:border-gray-700 rounded-lg p-3 bg-white dark:bg-gray-800 cursor-move hover:border-blue-400 dark:hover:border-blue-600 transition-colors"
+                        >
                           <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 mb-3">
-                            <h6 className="text-gray-800 dark:text-white">{room.name}</h6>
+                            <div className="flex items-center gap-2 flex-1">
+                              <GripVertical className="text-gray-400" size={16} />
+                              <h6 className="text-gray-800 dark:text-white">{room.name}</h6>
+                            </div>
                             <div className="flex flex-wrap gap-2 w-full sm:w-auto">
                               <button
                                 onClick={() => setShowDialog({ 
@@ -731,9 +856,16 @@ export const FormEditor: React.FC = () => {
                               <div
                                 key={unitIdIndex}
                                 draggable
-                                onDragStart={() => handleDragStart('unitId', unitIdIndex, [campusIndex, buildingIndex, roomIndex])}
+                                onDragStart={(e) => {
+                                  e.stopPropagation();
+                                  handleDragStart('unitId', unitIdIndex, [campusIndex, buildingIndex, roomIndex]);
+                                }}
                                 onDragOver={handleDragOver}
-                                onDrop={() => handleDrop('unitId', unitIdIndex, [campusIndex, buildingIndex, roomIndex])}
+                                onDrop={(e) => {
+                                  e.stopPropagation();
+                                  handleDrop('unitId', unitIdIndex, [campusIndex, buildingIndex, roomIndex]);
+                                }}
+                                onDragEnd={handleDragEnd}
                                 className="flex items-center gap-1 px-3 py-1 bg-blue-100 dark:bg-blue-900/20 text-blue-800 dark:text-blue-400 rounded-full cursor-move hover:bg-blue-200 dark:hover:bg-blue-900/40 transition-colors"
                               >
                                 <GripVertical size={12} className="text-blue-600 dark:text-blue-500" />
@@ -810,9 +942,16 @@ export const FormEditor: React.FC = () => {
                 <div 
                   key={issueTypeIndex} 
                   draggable
-                  onDragStart={() => handleDragStart('issueType', issueTypeIndex)}
+                  onDragStart={(e) => {
+                    e.stopPropagation();
+                    handleDragStart('issueType', issueTypeIndex);
+                  }}
                   onDragOver={handleDragOver}
-                  onDrop={() => handleDrop('issueType', issueTypeIndex)}
+                  onDrop={(e) => {
+                    e.stopPropagation();
+                    handleDrop('issueType', issueTypeIndex);
+                  }}
+                  onDragEnd={handleDragEnd}
                   className="border border-gray-200 dark:border-gray-700 rounded-lg p-3 sm:p-4 cursor-move hover:border-blue-400 dark:hover:border-blue-600 transition-colors"
                 >
                   <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 mb-3">
@@ -862,9 +1001,16 @@ export const FormEditor: React.FC = () => {
                       <div
                         key={subtypeIndex}
                         draggable
-                        onDragStart={() => handleDragStart('subtype', subtypeIndex, [issueTypeIndex])}
+                        onDragStart={(e) => {
+                          e.stopPropagation();
+                          handleDragStart('subtype', subtypeIndex, [issueTypeIndex]);
+                        }}
                         onDragOver={handleDragOver}
-                        onDrop={() => handleDrop('subtype', subtypeIndex, [issueTypeIndex])}
+                        onDrop={(e) => {
+                          e.stopPropagation();
+                          handleDrop('subtype', subtypeIndex, [issueTypeIndex]);
+                        }}
+                        onDragEnd={handleDragEnd}
                         className="flex items-center gap-1 px-3 py-1 bg-green-100 dark:bg-green-900/20 text-green-800 dark:text-green-400 rounded-full cursor-move hover:bg-green-200 dark:hover:bg-green-900/40 transition-colors"
                       >
                         <GripVertical size={12} className="text-green-600 dark:text-green-500" />
