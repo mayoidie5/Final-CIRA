@@ -337,7 +337,7 @@ export const ResetPassword: React.FC<ResetPasswordProps> = ({ oobCode }) => {
                   <button
                     type="submit"
                     disabled={loading || !allRequirementsMet || !passwordsMatch}
-                    className="w-full px-4 py-2.5 bg-blue-600 hover:bg-blue-700 disabled:bg-gray-400 disabled:cursor-not-allowed text-white font-medium rounded-lg transition-colors shadow-sm hover:shadow-md disabled:shadow-none"
+                    className="w-full px-6 py-3 bg-blue-600 hover:bg-blue-700 disabled:bg-gray-400 disabled:cursor-not-allowed text-white font-medium rounded-lg transition-colors shadow-sm hover:shadow-md disabled:shadow-none mt-2"
                   >
                     {loading ? (
                       <div className="flex items-center justify-center gap-2">
