@@ -157,6 +157,16 @@ const AppContent: React.FC = () => {
     localStorage.setItem('lastPage', currentPage);
   }, [currentPage]);
 
+  // When user logs in, navigate to dashboard
+  useEffect(() => {
+    if (user) {
+      // User has logged in, set page to dashboard if currently on an auth page
+      if (!currentPage || currentPage === 'signin' || currentPage === 'signup' || currentPage === 'forgot-password') {
+        setCurrentPage('dashboard');
+      }
+    }
+  }, [user?.id]); // Only depend on user.id to detect login/logout
+
   // Handle window resize to manage sidebar visibility
   useEffect(() => {
     const handleResize = () => {
