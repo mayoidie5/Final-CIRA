@@ -49,7 +49,7 @@ export function AccountCreatedModal({ isOpen, email, onClose }: AccountCreatedMo
 
         <button
           onClick={onClose}
-          className="w-full bg-green-500 hover:bg-green-600 text-white font-semibold py-3 px-4 rounded-lg transition duration-200"
+          className="w-full bg-green-600 hover:bg-green-700 dark:bg-green-500 dark:hover:bg-green-600 text-white font-semibold py-3 px-4 rounded-lg transition duration-200"
         >
           Got It! 👍
         </button>
