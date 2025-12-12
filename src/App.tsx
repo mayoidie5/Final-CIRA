@@ -50,6 +50,15 @@ const AppContent: React.FC = () => {
       return; // EARLY RETURN - stops all other checks
     }
     
+    // Handle email verification code from email link
+    // Can come to /auth/action with mode=verifyEmail and oobCode
+    if (mode === 'verifyEmail' && oobCode) {
+      console.log('📧 Detected email verification link');
+      setResetPasswordCode(oobCode);
+      setAuthView('reset-password');
+      return; // EARLY RETURN - stops all other checks
+    }
+    
     // Handle route-based navigation for logged-in users
     if (user && pathname !== '/') {
       if (pathname.startsWith('/tickets/')) {
@@ -75,6 +84,9 @@ const AppContent: React.FC = () => {
         return;
       } else if (pathname === '/forgot-password') {
         setAuthView('forgot-password');
+        return;
+      } else if (pathname === '/auth/action') {
+        // Don't navigate away from auth action page (handles both email verification and password reset)
         return;
       } else if (pathname === '/reset-password') {
         // Don't navigate away from reset-password page

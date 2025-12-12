@@ -18,13 +18,15 @@ const getAppUrl = (): string => {
 // Configuration for action code URLs
 export const firebaseActionUrls = {
   // Email verification: User clicks link in email → redirected to this URL
-  emailVerification: (appUrl: string) => `${appUrl}/?verifying=true`,
+  // The app detects the code type and handles accordingly
+  emailVerification: (appUrl: string) => `${appUrl}/auth/action`,
   
   // Password reset: User clicks link in email → redirected to this URL with oobCode
-  passwordReset: (appUrl: string) => `${appUrl}/reset-password`,
+  // The app detects the code type and handles accordingly
+  passwordReset: (appUrl: string) => `${appUrl}/auth/action`,
   
   // Email change confirmation: User clicks link in email → redirected to this URL
-  emailChange: (appUrl: string) => `${appUrl}/?verifying=true`,
+  emailChange: (appUrl: string) => `${appUrl}/auth/action`,
 };
 
 // ============================================
