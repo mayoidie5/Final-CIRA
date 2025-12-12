@@ -42,11 +42,12 @@ const AppContent: React.FC = () => {
     const verifying = url.searchParams.get('verifying');
     
     // Handle password reset code from email link
+    // MUST be checked FIRST to prevent auto-close
     if (mode === 'resetPassword' && oobCode) {
       console.log('🔐 Detected password reset link');
       setResetPasswordCode(oobCode);
       setAuthView('reset-password');
-      return;
+      return; // EARLY RETURN - stops all other checks
     }
     
     // Handle route-based navigation for logged-in users
@@ -74,6 +75,9 @@ const AppContent: React.FC = () => {
         return;
       } else if (pathname === '/forgot-password') {
         setAuthView('forgot-password');
+        return;
+      } else if (pathname === '/reset-password') {
+        // Don't navigate away from reset-password page
         return;
       } else if (pathname === '/' || pathname === '/signin') {
         // Default to signin if on root or signin path
