@@ -160,10 +160,8 @@ const AppContent: React.FC = () => {
   // When user logs in, navigate to dashboard
   useEffect(() => {
     if (user) {
-      // User has logged in, set page to dashboard if currently on an auth page
-      if (!currentPage || currentPage === 'signin' || currentPage === 'signup' || currentPage === 'forgot-password') {
-        setCurrentPage('dashboard');
-      }
+      // User has logged in, always navigate to dashboard
+      setCurrentPage('dashboard');
     }
   }, [user?.id]); // Only depend on user.id to detect login/logout
 
