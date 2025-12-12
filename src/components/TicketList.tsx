@@ -14,7 +14,7 @@ interface TicketListProps {
 
 export const TicketList: React.FC<TicketListProps> = ({ view = 'all', selectedTicketId }) => {
   const { user } = useAuth();
-  const { tickets } = useTickets();
+  const { tickets, loadTickets } = useTickets();
   const [searchTerm, setSearchTerm] = useState('');
   const [filters, setFilters] = useState({
     status: 'all',
@@ -156,7 +156,7 @@ export const TicketList: React.FC<TicketListProps> = ({ view = 'all', selectedTi
   const uniqueIssueTypes = formConfig?.issueTypes.map(it => it.name) || [];
 
   if (selectedTicket) {
-    return <TicketDetails ticket={selectedTicket} onBack={() => setSelectedTicket(null)} />;
+    return <TicketDetails ticket={selectedTicket} onBack={() => setSelectedTicket(null)} onTicketUpdated={loadTickets} />;
   }
 
   // Check if class_rep is pending - show banner but allow access to own tickets

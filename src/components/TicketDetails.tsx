@@ -15,11 +15,12 @@ import { db } from '../config/firebase';
 interface TicketDetailsProps {
   ticket: Ticket;
   onBack: () => void;
+  onTicketUpdated?: () => Promise<void>;
 }
 
-export const TicketDetails: React.FC<TicketDetailsProps> = ({ ticket, onBack }) => {
+export const TicketDetails: React.FC<TicketDetailsProps> = ({ ticket, onBack, onTicketUpdated }) => {
   const { user } = useAuth();
-  const { updateTicket, notifyAdmin, notifyClassReps } = useTickets();
+  const { updateTicket, notifyAdmin, notifyClassReps, getTicketById } = useTickets();
   const { addNotification } = useNotifications();
   const [adminNote, setAdminNote] = useState('');
   const [resolutionNote, setResolutionNote] = useState('');
@@ -40,6 +41,18 @@ export const TicketDetails: React.FC<TicketDetailsProps> = ({ ticket, onBack }) 
     setLocalTicket(ticket);
   }, [ticket]);
 
+  // Refetch the current ticket data in real-time
+  const refetchTicket = async () => {
+    try {
+      const updatedTicket = await getTicketById(ticket.id);
+      if (updatedTicket) {
+        setLocalTicket(updatedTicket);
+      }
+    } catch (error) {
+      console.error('Error refetching ticket:', error);
+    }
+  };
+
 
   const handleAcceptTicket = () => {
     setConfirmDialog({
@@ -55,7 +68,10 @@ export const TicketDetails: React.FC<TicketDetailsProps> = ({ ticket, onBack }) 
           setConfirmDialog(null);
           // Wait for state to propagate
           await new Promise(resolve => setTimeout(resolve, 500));
-          onBack();
+          // Update ticket data in real-time
+          await refetchTicket();
+          // Notify parent to refresh ticket list
+          await onTicketUpdated?.();
         } catch (err) {
           console.error('Error accepting ticket:', err);
         }
@@ -100,9 +116,12 @@ export const TicketDetails: React.FC<TicketDetailsProps> = ({ ticket, onBack }) 
           console.log('✅ Ticket status changed to in_progress');
           setAdminNote('');
           setConfirmDialog(null);
-          // Give time for state to propagate before going back
+          // Give time for state to propagate
           await new Promise(resolve => setTimeout(resolve, 500));
-          onBack();
+          // Update ticket data in real-time
+          await refetchTicket();
+          // Notify parent to refresh ticket list
+          await onTicketUpdated?.();
         } catch (err) {
           console.error('🔴 Error starting progress:', err);
           setValidationError(`Failed to start progress: ${err instanceof Error ? err.message : 'Unknown error'}`);
@@ -139,7 +158,10 @@ export const TicketDetails: React.FC<TicketDetailsProps> = ({ ticket, onBack }) 
           setConfirmDialog(null);
           // Wait for state to propagate
           await new Promise(resolve => setTimeout(resolve, 500));
-          onBack();
+          // Update ticket data in real-time
+          await refetchTicket();
+          // Notify parent to refresh ticket list
+          await onTicketUpdated?.();
         } catch (err) {
           console.error('Error submitting for resolution:', err);
         }
@@ -172,7 +194,10 @@ export const TicketDetails: React.FC<TicketDetailsProps> = ({ ticket, onBack }) 
           setConfirmDialog(null);
           // Wait for state to propagate
           await new Promise(resolve => setTimeout(resolve, 500));
-          onBack();
+          // Update ticket data in real-time
+          await refetchTicket();
+          // Notify parent to refresh ticket list
+          await onTicketUpdated?.();
         } catch (err) {
           console.error('🔴 Error confirming resolution:', err);
           setValidationError(`Failed to confirm resolution: ${err instanceof Error ? err.message : 'Unknown error'}`);
@@ -215,7 +240,10 @@ export const TicketDetails: React.FC<TicketDetailsProps> = ({ ticket, onBack }) 
           setConfirmDialog(null);
           // Wait for state to propagate
           await new Promise(resolve => setTimeout(resolve, 500));
-          onBack();
+          // Update ticket data in real-time
+          await refetchTicket();
+          // Notify parent to refresh ticket list
+          await onTicketUpdated?.();
         } catch (err) {
           console.error('Error confirming resolution:', err);
         }
@@ -257,9 +285,12 @@ export const TicketDetails: React.FC<TicketDetailsProps> = ({ ticket, onBack }) 
           setConfirmDialog(null);
           // Wait for state to propagate
           await new Promise(resolve => setTimeout(resolve, 500));
-          onBack();
+          // Update ticket data in real-time
+          await refetchTicket();
+          // Notify parent to refresh ticket list
+          await onTicketUpdated?.();
         } catch (err) {
-          console.error('Error confirming resolution:', err);
+          console.error('Error finalizing ticket:', err);
         }
       },
       type: 'info',
