@@ -6,7 +6,7 @@ import { DEFAULT_FORM_CONFIG } from '../utils/defaultFormConfig';
 import { FormDialog } from './FormDialog';
 import { ConfirmDialog } from './ConfirmDialog';
 import { SuccessToast } from './SuccessToast';
-import { Tabs, TabsList, TabsTrigger, TabsContent } from './ui/tabs';
+import { Tabs, TabsList, TabsTrigger, TabsContent, TabsStyles } from './ui/tabs';
 
 export const FormEditor: React.FC = () => {
   const [formConfig, setFormConfig] = useState<FormConfig>(DEFAULT_FORM_CONFIG);
@@ -504,6 +504,7 @@ export const FormEditor: React.FC = () => {
 
   return (
     <div className="max-w-7xl mx-auto p-4 sm:p-6 space-y-4 sm:space-y-6">
+      <TabsStyles />
       <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 sm:gap-0">
         <div>
           <div className="flex items-center gap-2">
@@ -576,13 +577,13 @@ export const FormEditor: React.FC = () => {
           <TabsList className="w-full justify-start rounded-none border-b border-gray-200 dark:border-gray-700 bg-transparent p-0 h-auto">
             <TabsTrigger 
               value="campus"
-              className="rounded-none border-b-2 border-transparent data-[state=active]:border-blue-600 data-[state=active]:bg-transparent data-[state=active]:text-blue-600 dark:data-[state=active]:text-blue-400 data-[state=active]:font-semibold px-4 py-3 hover:bg-blue-50 dark:hover:bg-gray-700 transition-colors"
+              className="rounded-none border-b-2 border-transparent data-[state=active]:border-blue-600 data-[state=active]:font-semibold px-4 py-3 text-gray-600 dark:text-gray-400 hover:bg-blue-50 dark:hover:bg-gray-700 transition-colors campus-trigger"
             >
               Campus & Location
             </TabsTrigger>
             <TabsTrigger 
               value="issues"
-              className="rounded-none border-b-2 border-transparent data-[state=active]:border-blue-600 data-[state=active]:bg-transparent data-[state=active]:text-blue-600 dark:data-[state=active]:text-blue-400 data-[state=active]:font-semibold px-4 py-3 hover:bg-blue-50 dark:hover:bg-gray-700 transition-colors"
+              className="rounded-none border-b-2 border-transparent data-[state=active]:border-blue-600 data-[state=active]:font-semibold px-4 py-3 text-gray-600 dark:text-gray-400 hover:bg-blue-50 dark:hover:bg-gray-700 transition-colors issue-trigger"
             >
               Issue Types
             </TabsTrigger>
