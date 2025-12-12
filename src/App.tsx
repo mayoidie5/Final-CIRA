@@ -36,6 +36,19 @@ const AppContent: React.FC = () => {
     localStorage.setItem('lastPage', currentPage);
   }, [currentPage]);
 
+  // Listen for verification success messages from other tabs
+  useEffect(() => {
+    const handleMessage = (event: MessageEvent) => {
+      console.log('📨 Received message:', event.data);
+      if (event.data.type === 'emailVerificationSuccess') {
+        console.log('✅ Email verification successful from other tab:', event.data.email);
+      }
+    };
+
+    window.addEventListener('message', handleMessage);
+    return () => window.removeEventListener('message', handleMessage);
+  }, []);
+
   // Handle window resize to manage sidebar visibility
   useEffect(() => {
     const handleResize = () => {
@@ -116,7 +129,10 @@ const AppContent: React.FC = () => {
               setShowEmailVerificationModal(false);
               // Clear URL parameters after verification
               window.history.replaceState({}, document.title, window.location.pathname);
-            }} 
+            }}
+            onVerificationSuccess={() => {
+              console.log('✅ Verification successful, staying on signin page');
+            }}
           />
         </>
       );
@@ -128,8 +144,13 @@ const AppContent: React.FC = () => {
             isOpen={showEmailVerificationModal} 
             onClose={() => {
               setShowEmailVerificationModal(false);
+              setAuthView('signin');
               window.history.replaceState({}, document.title, window.location.pathname);
-            }} 
+            }}
+            onVerificationSuccess={() => {
+              console.log('✅ Verification successful, switching to signin view');
+              setAuthView('signin');
+            }}
           />
         </>
       );
@@ -280,10 +301,6 @@ const AppContent: React.FC = () => {
 
       {showSettings && <Settings onClose={() => setShowSettings(false)} />}
       {showTutorial && <Tutorial onClose={() => setShowTutorial(false)} />}
-      <EmailVerificationModal 
-        isOpen={showEmailVerificationModal} 
-        onClose={() => setShowEmailVerificationModal(false)} 
-      />
     </div>
   );
 };

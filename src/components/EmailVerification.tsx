@@ -8,9 +8,10 @@ import { signInAnonymously } from 'firebase/auth';
 interface EmailVerificationModalProps {
   isOpen: boolean;
   onClose: () => void;
+  onVerificationSuccess?: () => void;
 }
 
-export function EmailVerificationModal({ isOpen, onClose }: EmailVerificationModalProps) {
+export function EmailVerificationModal({ isOpen, onClose, onVerificationSuccess }: EmailVerificationModalProps) {
   const [status, setStatus] = useState<'loading' | 'success' | 'error'>('loading');
   const [message, setMessage] = useState('');
   const [debugInfo, setDebugInfo] = useState('');
@@ -146,8 +147,40 @@ export function EmailVerificationModal({ isOpen, onClose }: EmailVerificationMod
 
         if (result) {
           setStatus('success');
-          setMessage('Your email has been verified successfully! You can now close this window and sign in.');
+          setMessage('Your email has been verified successfully! Closing this window...');
           console.log('✅ Email verified:', email);
+          
+          // Wait 1.5 seconds, then try to close the tab or redirect
+          setTimeout(() => {
+            // Clear URL parameters
+            window.history.replaceState({}, document.title, window.location.pathname);
+            
+            // If this window was opened by another window (from email link in new tab)
+            if (window.opener) {
+              console.log('📢 Notifying parent window of successful verification');
+              try {
+                // Send message to parent window
+                window.opener.postMessage({
+                  type: 'emailVerificationSuccess',
+                  email: email,
+                  verified: true
+                }, '*');
+              } catch (e) {
+                console.warn('⚠️ Could not post message to parent:', e);
+              }
+              
+              // Close this window after a short delay
+              setTimeout(() => {
+                window.close();
+              }, 500);
+            } else {
+              // No parent window, so just close the modal and redirect
+              if (onVerificationSuccess) {
+                onVerificationSuccess();
+              }
+              onClose();
+            }
+          }, 1500);
         } else {
           setStatus('error');
           setMessage('Email verification failed. Token may have expired or is invalid.');
@@ -203,18 +236,8 @@ Auth User: ${auth.currentUser ? auth.currentUser.uid : 'No user'}
               Email Verified!
             </h2>
             <p className="text-gray-600 dark:text-gray-400 mb-6">
-              {message}
+              Your email has been verified successfully! Redirecting...
             </p>
-            <button
-              onClick={() => {
-                // Close modal and redirect to sign in
-                window.history.replaceState({}, document.title, window.location.pathname);
-                onClose();
-              }}
-              className="w-full bg-green-500 hover:bg-green-600 text-white font-semibold py-3 px-4 rounded-lg transition duration-200"
-            >
-              Go to Sign In
-            </button>
           </>
         )}
 
