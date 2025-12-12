@@ -50,43 +50,44 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         const apiKey = url.searchParams.get('apiKey');
         
         // Check if this is a Firebase auth action URL
-        if (mode && oobCode) {
+        if (mode && oobCode && typeof oobCode === 'string') {
           console.log('🔗 Detected Firebase auth action URL');
           console.log('   Mode:', mode);
           console.log('   Code:', oobCode.substring(0, 10) + '...');
           
           try {
-            // Try to parse the action code URL to verify it's valid
-            const actionCodeInfo = await parseActionCodeURL(auth, oobCode);
-            console.log('✅ Valid Firebase action code detected');
-            console.log('   Operation:', actionCodeInfo.operation);
-            
-            // Apply the verification code - this marks the email as verified in Firebase Auth
-            await applyActionCode(auth, oobCode);
-            console.log('✅ Email verified successfully via Firebase');
-            
-            // Refresh the user's ID token to get updated claims
-            const currentUser = auth.currentUser;
-            if (currentUser) {
-              await currentUser.reload();
-              console.log('🔄 User reloaded with verified status');
-              console.log('   Email verified:', currentUser.emailVerified);
+            // Only process verifyEmail codes, not resetPassword codes
+            if (mode === 'verifyEmail') {
+              // Apply the verification code - this marks the email as verified in Firebase Auth
+              await applyActionCode(auth, oobCode);
+              console.log('✅ Email verified successfully via Firebase');
+              
+              // Refresh the user's ID token to get updated claims
+              const currentUser = auth.currentUser;
+              if (currentUser) {
+                await currentUser.reload();
+                console.log('🔄 User reloaded with verified status');
+                console.log('   Email verified:', currentUser.emailVerified);
+              }
+              
+              // Show success message before closing
+              console.log('🎉 Email verification complete! Closing tab in 2 seconds...');
+              
+              // Notify any other tabs that verification is complete
+              localStorage.setItem('verificationComplete', JSON.stringify({
+                timestamp: Date.now(),
+                verified: true
+              }));
+              
+              // Wait 2 seconds to show the success message, then close the tab
+              setTimeout(() => {
+                window.close();
+              }, 2000);
+            } else if (mode === 'resetPassword') {
+              // Don't process resetPassword codes here - let ResetPassword component handle it
+              console.log('ℹ️ Reset password code detected - skipping verification handler');
+              return;
             }
-            
-            // Show success message before closing
-            console.log('🎉 Email verification complete! Closing tab in 2 seconds...');
-            
-            // Notify any other tabs that verification is complete
-            localStorage.setItem('verificationComplete', JSON.stringify({
-              timestamp: Date.now(),
-              verified: true
-            }));
-            
-            // Wait 2 seconds to show the success message, then close the tab
-            setTimeout(() => {
-              window.close();
-            }, 2000);
-            
           } catch (error: any) {
             console.error('❌ Failed to apply verification code:', error);
             if (error.code === 'auth/invalid-action-code') {
