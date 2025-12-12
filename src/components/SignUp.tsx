@@ -593,12 +593,8 @@ export const SignUp: React.FC<SignUpProps> = ({ onSwitchToSignIn }) => {
                 >
                   <option value="">Select Course</option>
                   <option value="BSIT">BSIT</option>
-                  <option value="BSCS">BSCS</option>
                   <option value="BSCE">BSCE</option>
                   <option value="BSEE">BSEE</option>
-                  <option value="BSME">BSME</option>
-                  <option value="BSED">BSED</option>
-                  <option value="BEED">BEED</option>
                 </select>
                 {fieldErrors.course && (
                   <p className="mt-1 text-sm text-red-500">{fieldErrors.course}</p>
