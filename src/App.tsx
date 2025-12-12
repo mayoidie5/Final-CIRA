@@ -51,12 +51,20 @@ const AppContent: React.FC = () => {
     }
     
     // Handle email verification code from email link
-    // Can come to /auth/action with mode=verifyEmail and oobCode
+    // Email verification is handled automatically by AuthContext
+    // Show verification success screen
     if (mode === 'verifyEmail' && oobCode) {
-      console.log('📧 Detected email verification link');
-      setResetPasswordCode(oobCode);
-      setAuthView('reset-password');
-      return; // EARLY RETURN - stops all other checks
+      console.log('📧 Detected email verification link - showing success screen');
+      setVerificationSuccess(true);
+      
+      // Clean up the URL
+      window.history.replaceState({}, document.title, window.location.pathname);
+      
+      // Close tab after 2 seconds
+      setTimeout(() => {
+        window.close();
+      }, 2000);
+      return;
     }
     
     // Handle route-based navigation for logged-in users

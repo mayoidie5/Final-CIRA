@@ -35,7 +35,7 @@ export const ResetPassword: React.FC<ResetPasswordProps> = ({ oobCode }) => {
   const allRequirementsMet = Object.values(passwordRequirements).every(req => req);
   const passwordsMatch = newPassword === confirmPassword && newPassword.length > 0;
 
-  // Verify the code on mount - detect if it's password reset or email verification
+  // Verify the code on mount - only handle password reset codes
   useEffect(() => {
     const verifyCode = async () => {
       if (!oobCode) {
@@ -45,34 +45,12 @@ export const ResetPassword: React.FC<ResetPasswordProps> = ({ oobCode }) => {
       }
 
       try {
-        // Try password reset first
-        try {
-          const resetEmail = await verifyPasswordResetCode(auth, oobCode);
-          setEmail(resetEmail);
-          setCodeType('password');
-          setVerifying(false);
-          console.log('✅ Password reset code verified for:', resetEmail);
-          return;
-        } catch (resetErr: any) {
-          // Password reset verification failed, try email verification
-          console.log('ℹ️ Not a password reset code, attempting email verification...');
-        }
-
-        // Try email verification using applyActionCode
-        try {
-          // For email verification, we use the context to handle it
-          // But we can detect it's an email verification code here
-          const { applyActionCode } = await import('firebase/auth');
-          await applyActionCode(auth, oobCode);
-          setCodeType('email');
-          setSuccess(true);
-          setVerifying(false);
-          console.log('✅ Email verification code applied successfully');
-          return;
-        } catch (emailErr: any) {
-          console.error('❌ Email verification error:', emailErr);
-          throw emailErr;
-        }
+        // Try password reset code verification
+        const resetEmail = await verifyPasswordResetCode(auth, oobCode);
+        setEmail(resetEmail);
+        setCodeType('password');
+        setVerifying(false);
+        console.log('✅ Password reset code verified for:', resetEmail);
       } catch (err: any) {
         console.error('❌ Code verification error:', err);
         setError('This link is invalid or has expired. Please request a new one.');
