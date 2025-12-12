@@ -1,12 +1,16 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { ArrowLeft, Calendar, MapPin, Wrench, FileText, CheckCircle, Clock, MessageSquare } from 'lucide-react';
 import { Ticket } from '../types';
 import { useAuth } from '../contexts/AuthContext';
 import { useTickets } from '../hooks/useTickets';
+import { useNotifications } from '../contexts/NotificationContext';
 import { ValidationAlert } from './ValidationAlert';
 import { ConfirmDialog } from './ConfirmDialog';
 import { ImageLightbox } from './ImageLightbox';
 import { ProgressStepper } from './ProgressStepper';
+import { SuccessToast } from './SuccessToast';
+import { collection, query, where, getDocs } from 'firebase/firestore';
+import { db } from '../config/firebase';
 
 interface TicketDetailsProps {
   ticket: Ticket;
@@ -16,17 +20,26 @@ interface TicketDetailsProps {
 export const TicketDetails: React.FC<TicketDetailsProps> = ({ ticket, onBack }) => {
   const { user } = useAuth();
   const { updateTicket, notifyAdmin, notifyClassReps } = useTickets();
+  const { addNotification } = useNotifications();
   const [adminNote, setAdminNote] = useState('');
   const [resolutionNote, setResolutionNote] = useState('');
   const [commentText, setCommentText] = useState('');
   const [validationError, setValidationError] = useState('');
+  const [successMessage, setSuccessMessage] = useState('');
   const [lightboxImage, setLightboxImage] = useState<number | null>(null);
+  const [localTicket, setLocalTicket] = useState<Ticket>(ticket);
   const [confirmDialog, setConfirmDialog] = useState<{ 
     title: string; 
     message: string; 
     onConfirm: () => void;
     type?: 'danger' | 'warning' | 'info';
   } | null>(null);
+
+  // Sync local ticket state with prop whenever ticket changes
+  useEffect(() => {
+    setLocalTicket(ticket);
+  }, [ticket]);
+
 
   const handleAcceptTicket = () => {
     setConfirmDialog({
@@ -40,8 +53,9 @@ export const TicketDetails: React.FC<TicketDetailsProps> = ({ ticket, onBack }) 
           });
           await notifyAdmin(`Ticket #${ticket.id.slice(0, 8)} accepted by ${user?.firstName} ${user?.lastName}`, ticket.id);
           setConfirmDialog(null);
-          // Wait a moment for the state to update, then go back
-          setTimeout(() => onBack(), 300);
+          // Wait for state to propagate
+          await new Promise(resolve => setTimeout(resolve, 500));
+          onBack();
         } catch (err) {
           console.error('Error accepting ticket:', err);
         }
@@ -69,10 +83,26 @@ export const TicketDetails: React.FC<TicketDetailsProps> = ({ ticket, onBack }) 
             adminNotes: adminNote,
           });
           
+          // Notify student that work has started (but not if student IS the admin)
+          if (ticket.userId !== user?.id) {
+            try {
+              await addNotification(
+                ticket.userId,
+                ticket.id,
+                `👷 Work has started on your ticket. Admin notes: ${adminNote.substring(0, 50)}...`,
+                `/tickets/${ticket.id}`
+              );
+            } catch (notifErr) {
+              console.warn('⚠️ Failed to notify student:', notifErr);
+            }
+          }
+          
           console.log('✅ Ticket status changed to in_progress');
           setAdminNote('');
           setConfirmDialog(null);
-          setTimeout(() => onBack(), 300);
+          // Give time for state to propagate before going back
+          await new Promise(resolve => setTimeout(resolve, 500));
+          onBack();
         } catch (err) {
           console.error('🔴 Error starting progress:', err);
           setValidationError(`Failed to start progress: ${err instanceof Error ? err.message : 'Unknown error'}`);
@@ -91,8 +121,25 @@ export const TicketDetails: React.FC<TicketDetailsProps> = ({ ticket, onBack }) 
           await updateTicket(ticket.id, {
             status: 'pending_resolution',
           });
+          
+          // Notify student that work is complete (but not if student IS the admin)
+          if (ticket.userId !== user?.id) {
+            try {
+              await addNotification(
+                ticket.userId,
+                ticket.id,
+                `✅ Your ticket work has been completed. Please confirm if the issue has been resolved.`,
+                `/tickets/${ticket.id}`
+              );
+            } catch (notifErr) {
+              console.warn('⚠️ Failed to notify student:', notifErr);
+            }
+          }
+          
           setConfirmDialog(null);
-          setTimeout(() => onBack(), 300);
+          // Wait for state to propagate
+          await new Promise(resolve => setTimeout(resolve, 500));
+          onBack();
         } catch (err) {
           console.error('Error submitting for resolution:', err);
         }
@@ -123,7 +170,9 @@ export const TicketDetails: React.FC<TicketDetailsProps> = ({ ticket, onBack }) 
           
           console.log('🟢 Notification sent, closing dialog');
           setConfirmDialog(null);
-          setTimeout(() => onBack(), 300);
+          // Wait for state to propagate
+          await new Promise(resolve => setTimeout(resolve, 500));
+          onBack();
         } catch (err) {
           console.error('🔴 Error confirming resolution:', err);
           setValidationError(`Failed to confirm resolution: ${err instanceof Error ? err.message : 'Unknown error'}`);
@@ -148,8 +197,25 @@ export const TicketDetails: React.FC<TicketDetailsProps> = ({ ticket, onBack }) 
             resolutionNote,
             resolvedAt: new Date().toISOString(),
           });
+          
+          // Notify student that ticket is resolved (but not if student IS the admin)
+          if (ticket.userId !== user?.id) {
+            try {
+              await addNotification(
+                ticket.userId,
+                ticket.id,
+                `🎉 Your ticket has been resolved: ${resolutionNote.substring(0, 50)}...`,
+                `/tickets/${ticket.id}`
+              );
+            } catch (notifErr) {
+              console.warn('⚠️ Failed to notify student:', notifErr);
+            }
+          }
+          
           setConfirmDialog(null);
-          setTimeout(() => onBack(), 300);
+          // Wait for state to propagate
+          await new Promise(resolve => setTimeout(resolve, 500));
+          onBack();
         } catch (err) {
           console.error('Error confirming resolution:', err);
         }
@@ -173,8 +239,25 @@ export const TicketDetails: React.FC<TicketDetailsProps> = ({ ticket, onBack }) 
             resolutionNote,
             resolvedAt: new Date().toISOString(),
           });
+          
+          // Notify student that ticket is finalized (but not if student IS the class rep)
+          if (ticket.userId !== user?.id) {
+            try {
+              await addNotification(
+                ticket.userId,
+                ticket.id,
+                `🎉 Your ticket has been finalized: ${resolutionNote.substring(0, 50)}...`,
+                `/tickets/${ticket.id}`
+              );
+            } catch (notifErr) {
+              console.warn('⚠️ Failed to notify student:', notifErr);
+            }
+          }
+          
           setConfirmDialog(null);
-          setTimeout(() => onBack(), 300);
+          // Wait for state to propagate
+          await new Promise(resolve => setTimeout(resolve, 500));
+          onBack();
         } catch (err) {
           console.error('Error confirming resolution:', err);
         }
@@ -189,34 +272,47 @@ export const TicketDetails: React.FC<TicketDetailsProps> = ({ ticket, onBack }) 
       return;
     }
 
-    const newComment = {
-      id: Date.now().toString() + Math.random(),
-      userId: user!.id,
-      userEmail: user!.email,
-      userName: `${user!.firstName} ${user!.lastName}`,
-      message: commentText,
-      createdAt: new Date().toISOString(),
-    };
+    try {
+      setValidationError('');
+      const newComment = {
+        id: Date.now().toString() + Math.random(),
+        userId: user!.id,
+        userEmail: user!.email,
+        userName: `${user!.firstName} ${user!.lastName}`,
+        message: commentText,
+        createdAt: new Date().toISOString(),
+      };
 
-    const updatedComments = [...(ticket.comments || []), newComment];
-    await updateTicket(ticket.id, { comments: updatedComments });
-    
-    // Notify class rep and admin about the comment
-    if (user?.role === 'student') {
-      await notifyClassReps(`New comment on Ticket #${ticket.id.slice(0, 8)} from ${user.firstName} ${user.lastName}`, ticket.id);
-      await notifyAdmin(`New comment on Ticket #${ticket.id.slice(0, 8)} from ${user.firstName} ${user.lastName}`, ticket.id);
+      const updatedComments = [...(ticket.comments || []), newComment];
+      await updateTicket(ticket.id, { comments: updatedComments });
+      
+      // Notify relevant users about the comment
+      if (user?.role === 'student') {
+        // Student commenting: notify class reps and admin
+        await notifyClassReps(`💬 New comment on Ticket #${ticket.id.slice(0, 8)} from ${user.firstName} ${user.lastName}`, ticket.id);
+        await notifyAdmin(`💬 New comment on Ticket #${ticket.id.slice(0, 8)} from ${user.firstName} ${user.lastName}`, ticket.id);
+      } else if (user?.role === 'class_rep') {
+        // Class rep commenting: notify admin
+        await notifyAdmin(`💬 New comment on Ticket #${ticket.id.slice(0, 8)} from ${user.firstName} ${user.lastName}`, ticket.id);
+      }
+      
+      setCommentText('');
+      setSuccessMessage('Comment added successfully!');
+      console.log('✅ Comment added successfully');
+    } catch (err) {
+      const errorMessage = err instanceof Error ? err.message : 'Failed to add comment';
+      console.error('❌ Error adding comment:', errorMessage);
+      setValidationError(errorMessage);
     }
-    
-    setCommentText('');
   };
 
-  const canAccept = user?.role === 'class_rep' && ticket.status === 'submitted';
-  const canStartProgress = user?.role === 'admin' && ticket.status === 'requested';
-  const canSubmitResolution = user?.role === 'admin' && ticket.status === 'in_progress';
-  const canConfirmResolution = (user?.role === 'class_rep' || user?.role === 'admin') && ticket.status === 'pending_resolution' && ticket.studentConfirmedResolution;
-  const canStudentConfirmResolution = user?.role === 'student' && ticket.status === 'pending_resolution' && ticket.userId === user?.id && !ticket.studentConfirmedResolution;
-  const canClassRepFinalize = user?.role === 'class_rep' && ticket.status === 'request_for_resolution' && ticket.userId !== user?.id;
-  const canComment = user?.role === 'student' && ticket.userId === user?.id && ticket.status !== 'resolved';
+  const canAccept = user?.role === 'class_rep' && localTicket.status === 'submitted';
+  const canStartProgress = user?.role === 'admin' && localTicket.status === 'requested';
+  const canSubmitResolution = user?.role === 'admin' && localTicket.status === 'in_progress';
+  const canConfirmResolution = (user?.role === 'class_rep' || user?.role === 'admin') && localTicket.status === 'pending_resolution' && localTicket.studentConfirmedResolution;
+  const canStudentConfirmResolution = user?.role === 'student' && localTicket.status === 'pending_resolution' && localTicket.userId === user?.id && !localTicket.studentConfirmedResolution;
+  const canClassRepFinalize = user?.role === 'class_rep' && localTicket.status === 'request_for_resolution' && localTicket.userId !== user?.id;
+  const canComment = (user?.role === 'student' && localTicket.userId === user?.id && localTicket.status !== 'resolved') || (user?.role === 'class_rep' && localTicket.userId === user?.id && localTicket.status !== 'resolved');
 
   const getStatusColor = (status: string) => {
     switch (status) {
@@ -250,7 +346,7 @@ export const TicketDetails: React.FC<TicketDetailsProps> = ({ ticket, onBack }) 
       'resolved': 4
     };
 
-    const currentStep = statusMap[ticket.status] || 0;
+    const currentStep = statusMap[localTicket.status] || 0;
 
     return [
       {
@@ -283,6 +379,7 @@ export const TicketDetails: React.FC<TicketDetailsProps> = ({ ticket, onBack }) 
 
   return (
     <div className="max-w-4xl mx-auto p-4 sm:p-6">
+      {successMessage && <SuccessToast message={successMessage} onClose={() => setSuccessMessage('')} />}
       <button
         onClick={onBack}
         className="flex items-center gap-2 text-blue-600 dark:text-blue-400 hover:underline mb-4 sm:mb-6"
@@ -295,20 +392,20 @@ export const TicketDetails: React.FC<TicketDetailsProps> = ({ ticket, onBack }) 
         <div className="p-4 sm:p-6 border-b border-gray-200 dark:border-gray-700">
           <div className="flex flex-col sm:flex-row items-start justify-between mb-4 gap-3">
             <div>
-              <h2 className="text-gray-800 dark:text-white mb-2">Ticket #{ticket.id.slice(0, 8)}</h2>
-              <span className={`px-3 py-1 rounded-full ${getStatusColor(ticket.status)}`}>
-                {getDisplayStatus(ticket.status)}
+              <h2 className="text-gray-800 dark:text-white mb-2">Ticket #{localTicket.id.slice(0, 8)}</h2>
+              <span className={`px-3 py-1 rounded-full ${getStatusColor(localTicket.status)}`}>
+                {getDisplayStatus(localTicket.status)}
               </span>
             </div>
             <div className="text-left sm:text-right text-gray-600 dark:text-gray-400">
               <p className="flex items-center gap-2 sm:justify-end">
                 <Calendar size={16} />
-                <span className="text-sm sm:text-base">{new Date(ticket.createdAt).toLocaleString()}</span>
+                <span className="text-sm sm:text-base">{new Date(localTicket.createdAt).toLocaleString()}</span>
               </p>
-              {ticket.resolvedAt && ticket.status === 'resolved' && (
+              {localTicket.resolvedAt && localTicket.status === 'resolved' && (
                 <p className="flex items-center gap-2 sm:justify-end mt-2">
                   <Calendar size={16} />
-                  <span className="text-sm sm:text-base">Resolved: {new Date(ticket.resolvedAt).toLocaleString()}</span>
+                  <span className="text-sm sm:text-base">Resolved: {new Date(localTicket.resolvedAt).toLocaleString()}</span>
                 </p>
               )}
             </div>
@@ -331,19 +428,19 @@ export const TicketDetails: React.FC<TicketDetailsProps> = ({ ticket, onBack }) 
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4 bg-gray-50 dark:bg-gray-900 p-3 sm:p-4 rounded-lg">
               <div>
                 <p className="text-gray-600 dark:text-gray-400">Campus</p>
-                <p className="text-gray-800 dark:text-white">{ticket.campus}</p>
+                <p className="text-gray-800 dark:text-white">{localTicket.campus}</p>
               </div>
               <div>
                 <p className="text-gray-600 dark:text-gray-400">Building</p>
-                <p className="text-gray-800 dark:text-white">{ticket.building}</p>
+                <p className="text-gray-800 dark:text-white">{localTicket.building}</p>
               </div>
               <div>
                 <p className="text-gray-600 dark:text-gray-400">Room</p>
-                <p className="text-gray-800 dark:text-white">{ticket.room}</p>
+                <p className="text-gray-800 dark:text-white">{localTicket.room}</p>
               </div>
               <div>
                 <p className="text-gray-600 dark:text-gray-400">Unit ID</p>
-                <p className="text-gray-800 dark:text-white">{ticket.unitId}</p>
+                <p className="text-gray-800 dark:text-white">{localTicket.unitId}</p>
               </div>
             </div>
           </div>
@@ -357,25 +454,25 @@ export const TicketDetails: React.FC<TicketDetailsProps> = ({ ticket, onBack }) 
             <div className="space-y-3 bg-gray-50 dark:bg-gray-900 p-3 sm:p-4 rounded-lg">
               <div>
                 <p className="text-gray-600 dark:text-gray-400">Issue Type</p>
-                <p className="text-gray-800 dark:text-white">{ticket.issueType}</p>
+                <p className="text-gray-800 dark:text-white">{localTicket.issueType}</p>
               </div>
               <div>
                 <p className="text-gray-600 dark:text-gray-400">Issue Subtype</p>
-                <p className="text-gray-800 dark:text-white">{ticket.issueSubtype}</p>
+                <p className="text-gray-800 dark:text-white">{localTicket.issueSubtype}</p>
               </div>
               <div>
                 <p className="text-gray-600 dark:text-gray-400">Description</p>
-                <p className="text-gray-800 dark:text-white">{ticket.issueDescription}</p>
+                <p className="text-gray-800 dark:text-white">{localTicket.issueDescription}</p>
               </div>
             </div>
           </div>
 
           {/* Images */}
-          {ticket.images && ticket.images.length > 0 && (
+          {localTicket.images && localTicket.images.length > 0 && (
             <div>
               <h3 className="text-gray-800 dark:text-white mb-3 text-base sm:text-lg">Attached Images</h3>
               <div className="grid grid-cols-2 sm:grid-cols-3 gap-2 sm:gap-3 lg:gap-4">
-                {ticket.images.map((image, index) => (
+                {localTicket.images.map((image, index) => (
                   <img
                     key={index}
                     src={image}
@@ -389,40 +486,40 @@ export const TicketDetails: React.FC<TicketDetailsProps> = ({ ticket, onBack }) 
           )}
 
           {/* Admin Notes */}
-          {ticket.adminNotes && (
+          {localTicket.adminNotes && (
             <div>
               <h3 className="text-gray-800 dark:text-white mb-3 flex items-center gap-2">
                 <FileText size={20} />
                 Admin Notes
               </h3>
               <div className="bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 p-4 rounded-lg">
-                <p className="text-gray-800 dark:text-white">{ticket.adminNotes}</p>
+                <p className="text-gray-800 dark:text-white">{localTicket.adminNotes}</p>
               </div>
             </div>
           )}
 
           {/* Resolution Note */}
-          {ticket.resolutionNote && (
+          {localTicket.resolutionNote && (
             <div>
               <h3 className="text-gray-800 dark:text-white mb-3 flex items-center gap-2">
                 <CheckCircle size={20} />
                 Resolution Note
               </h3>
               <div className="bg-green-50 dark:bg-green-900/20 border border-green-200 dark:border-green-800 p-4 rounded-lg">
-                <p className="text-gray-800 dark:text-white">{ticket.resolutionNote}</p>
+                <p className="text-gray-800 dark:text-white">{localTicket.resolutionNote}</p>
               </div>
             </div>
           )}
 
           {/* Comments Section */}
-          {ticket.comments && ticket.comments.length > 0 && (
+          {localTicket.comments && localTicket.comments.length > 0 && (
             <div>
               <h3 className="text-gray-800 dark:text-white mb-3 flex items-center gap-2">
                 <MessageSquare size={20} />
                 Comments
               </h3>
               <div className="space-y-3">
-                {ticket.comments.map((comment) => (
+                {localTicket.comments.map((comment) => (
                   <div
                     key={comment.id}
                     className="bg-gray-50 dark:bg-gray-900 border border-gray-200 dark:border-gray-700 p-4 rounded-lg"
@@ -609,7 +706,7 @@ export const TicketDetails: React.FC<TicketDetailsProps> = ({ ticket, onBack }) 
       {/* Image Lightbox */}
       {lightboxImage !== null && ticket.images && (
         <ImageLightbox
-          images={ticket.images}
+          images={localTicket.images}
           currentIndex={lightboxImage}
           onClose={() => setLightboxImage(null)}
           onNext={() => setLightboxImage((lightboxImage + 1) % ticket.images!.length)}
